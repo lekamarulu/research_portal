@@ -1,0 +1,757 @@
+openapi: 3.0.3
+info:
+  title: Rainfall API
+  version: 1.0.0
+  description: API for accessing rainfall and station data
+paths:
+  /api/rainfall/:
+    get:
+      operationId: api_rainfall_list
+      parameters:
+      - in: query
+        name: climate_scenario
+        schema:
+          type: string
+        description: Filter by Scenario
+        required: true
+        examples:
+          ScenarioRCP4.5:
+            value: RCP45
+            summary: Scenario RCP4.5
+          ScenarioRCP8.5:
+            value: RCP85
+            summary: Scenario RCP8.5
+      - in: query
+        name: station_code
+        schema:
+          type: string
+        description: Filter by Station
+        examples:
+          StationA:
+            value: ST001
+            summary: Station A
+          StationB:
+            value: ST002
+            summary: Station B
+      - in: query
+        name: year_measured
+        schema:
+          type: integer
+        description: Filter by Year
+        examples:
+          Year2022:
+            value: 2022
+            summary: Year 2022
+          Year2023:
+            value: 2023
+            summary: Year 2023
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Rainfall'
+          description: ''
+    post:
+      operationId: api_rainfall_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rainfall'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Rainfall'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Rainfall'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rainfall'
+          description: ''
+  /api/rainfall-monthly-pivot/:
+    get:
+      operationId: api_rainfall_monthly_pivot_retrieve
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/rainfall/{id}/:
+    get:
+      operationId: api_rainfall_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this rainfall.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rainfall'
+          description: ''
+    put:
+      operationId: api_rainfall_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this rainfall.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rainfall'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Rainfall'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Rainfall'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rainfall'
+          description: ''
+    patch:
+      operationId: api_rainfall_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this rainfall.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRainfall'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRainfall'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRainfall'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rainfall'
+          description: ''
+    delete:
+      operationId: api_rainfall_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this rainfall.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/schema/:
+    get:
+      operationId: api_schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/stations/:
+    get:
+      operationId: api_stations_list
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Station'
+          description: ''
+    post:
+      operationId: api_stations_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Station'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Station'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Station'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Station'
+          description: ''
+  /api/stations/{code}/:
+    get:
+      operationId: api_stations_retrieve
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+        description: A unique value identifying this station.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Station'
+          description: ''
+    put:
+      operationId: api_stations_update
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+        description: A unique value identifying this station.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Station'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Station'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Station'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Station'
+          description: ''
+    patch:
+      operationId: api_stations_partial_update
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+        description: A unique value identifying this station.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStation'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Station'
+          description: ''
+    delete:
+      operationId: api_stations_destroy
+      parameters:
+      - in: path
+        name: code
+        schema:
+          type: string
+        description: A unique value identifying this station.
+        required: true
+      tags:
+      - api
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    PatchedRainfall:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        date_measured:
+          type: string
+          format: date
+          title: Date
+        climate_scenario:
+          type: string
+          title: Scneario
+          maxLength: 25
+        year_measured:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          title: Year
+        month_measured:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        month_name:
+          type: string
+          nullable: true
+          title: Mon
+          maxLength: 25
+        month_day:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          title: Day
+        rainfall_total:
+          type: number
+          format: double
+          nullable: true
+          title: Total
+        rainfall_max:
+          type: number
+          format: double
+          nullable: true
+          title: Max
+        station:
+          type: string
+    PatchedStation:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 25
+        name:
+          type: string
+          nullable: true
+          maxLength: 100
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        area:
+          type: number
+          format: double
+          nullable: true
+        date_established:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+          nullable: true
+          maxLength: 25
+        data_from:
+          type: string
+          format: date
+          nullable: true
+        data_to:
+          type: string
+          format: date
+          nullable: true
+        operation_mode:
+          type: string
+          nullable: true
+          maxLength: 25
+        station_type:
+          type: string
+          nullable: true
+          maxLength: 25
+        river:
+          type: string
+          nullable: true
+          maxLength: 50
+        subbasin_name:
+          type: string
+          nullable: true
+          maxLength: 254
+        unit:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+          maxLength: 254
+        basin:
+          type: string
+          nullable: true
+          maxLength: 254
+        geom:
+          type: string
+          nullable: true
+    Rainfall:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        date_measured:
+          type: string
+          format: date
+          title: Date
+        climate_scenario:
+          type: string
+          title: Scneario
+          maxLength: 25
+        year_measured:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          title: Year
+        month_measured:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        month_name:
+          type: string
+          nullable: true
+          title: Mon
+          maxLength: 25
+        month_day:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+          title: Day
+        rainfall_total:
+          type: number
+          format: double
+          nullable: true
+          title: Total
+        rainfall_max:
+          type: number
+          format: double
+          nullable: true
+          title: Max
+        station:
+          type: string
+      required:
+      - climate_scenario
+      - date_measured
+      - id
+      - station
+    Station:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 25
+        name:
+          type: string
+          nullable: true
+          maxLength: 100
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        area:
+          type: number
+          format: double
+          nullable: true
+        date_established:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+          nullable: true
+          maxLength: 25
+        data_from:
+          type: string
+          format: date
+          nullable: true
+        data_to:
+          type: string
+          format: date
+          nullable: true
+        operation_mode:
+          type: string
+          nullable: true
+          maxLength: 25
+        station_type:
+          type: string
+          nullable: true
+          maxLength: 25
+        river:
+          type: string
+          nullable: true
+          maxLength: 50
+        subbasin_name:
+          type: string
+          nullable: true
+          maxLength: 254
+        unit:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+          maxLength: 254
+        basin:
+          type: string
+          nullable: true
+          maxLength: 254
+        geom:
+          type: string
+          nullable: true
+      required:
+      - code
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

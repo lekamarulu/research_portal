@@ -1,0 +1,11 @@
+Collecting reportlab
+  Using cached reportlab-4.4.0-py3-none-any.whl.metadata (1.8 kB)
+Collecting pillow>=9.0.0 (from reportlab)
+  Using cached pillow-11.2.1-cp312-cp312-win_amd64.whl.metadata (9.1 kB)
+Collecting chardet (from reportlab)
+  Using cached chardet-5.2.0-py3-none-any.whl.metadata (3.4 kB)
+Using cached reportlab-4.4.0-py3-none-any.whl (2.0 MB)
+Using cached pillow-11.2.1-cp312-cp312-win_amd64.whl (2.7 MB)
+Using cached chardet-5.2.0-py3-none-any.whl (199 kB)
+Installing collected packages: pillow, chardet, reportlab
+Successfully installed chardet-5.2.0 pillow-11.2.1 reportlab-4.4.0
