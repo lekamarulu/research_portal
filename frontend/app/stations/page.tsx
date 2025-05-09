@@ -1,12 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, Search, MapPin } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Station } from "@/lib/models"
+import { useRouter } from "next/navigation"
+
 import {
   Dialog,
   DialogContent,
@@ -16,49 +19,45 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { researchPortalApi } from "@/lib/api"
 
 export default function StationsPage() {
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-
-  // Mock data - in a real app, this would come from API
-  const stationData = [
-    {
-      code: "ST001",
-      name: "Station A",
-      latitude: 34.05,
-      longitude: -118.25,
-      status: "Active",
-      date_established: "2015-03-12",
-      river: "River Alpha",
-      basin: "Basin X",
-    },
-    {
-      code: "ST002",
-      name: "Station B",
-      latitude: 40.71,
-      longitude: -74.01,
-      status: "Active",
-      date_established: "2016-07-22",
-      river: "River Beta",
-      basin: "Basin Y",
-    },
-    {
-      code: "ST003",
-      name: "Station C",
-      latitude: 37.77,
-      longitude: -122.41,
-      status: "Inactive",
-      date_established: "2014-05-18",
-      river: "River Gamma",
-      basin: "Basin Z",
-    },
-  ]
+  const [stationData, setStationData] = useState<Station[]>([])
+  
+  const [error, setError] = useState<string | null>(null)
+    const router = useRouter()
+  
+    useEffect(() => {
+      // Fetch data from API
+      const fetchData = async () => {
+        setIsLoading(true)
+        try {
+          setError(null)
+  
+          const stationResult = await researchPortalApi.getStations()
+          setStationData(stationResult)
+  
+        } catch (error) {
+          console.error("Error fetching data:", error)
+          setError(error instanceof Error ? error.message : "Failed to fetch data")
+  
+        } finally {
+          setIsLoading(false)
+        }
+      }
+  
+      fetchData()
+    }, [])
 
   const filteredStations = stationData.filter(
     (station) =>
       station.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       station.code.toLowerCase().includes(searchQuery.toLowerCase()),
   )
+
+  
 
   return (
     <div className="container space-y-6 p-4 md:p-8">
@@ -147,18 +146,20 @@ export default function StationsPage() {
                   <TableRow>
                     <TableHead>Code</TableHead>
                     <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Established</TableHead>
                     <TableHead>River</TableHead>
                     <TableHead>Basin</TableHead>
                     <TableHead>Location</TableHead>
+                    <TableHead>Status</TableHead>
+
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredStations.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center">
+                      <TableCell colSpan={9} className="h-24 text-center">
                         No stations found.
                       </TableCell>
                     </TableRow>
@@ -167,10 +168,11 @@ export default function StationsPage() {
                       <TableRow key={station.code}>
                         <TableCell className="font-medium">{station.code}</TableCell>
                         <TableCell>{station.name}</TableCell>
+                         <TableCell>{station.station_type}</TableCell>
                         <TableCell>
                           <span
                             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              station.status === "Active"
+                              station.status === "Operational"
                                 ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                                 : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
                             }`}

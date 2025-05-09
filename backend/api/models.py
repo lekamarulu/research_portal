@@ -79,3 +79,14 @@ class Rainfall(models.Model):
         managed = False
         db_table = 'rainfall'
         unique_together = (('station', 'date_measured', 'climate_scenario'),)
+
+
+class ClimateScenario(models.Model):
+    climate_scenario = models.CharField(primary_key=True, max_length=20)
+    technical_code = models.CharField(max_length=25)
+    name = models.CharField(max_length=1000)
+    description = models.TextField()
+
+    class Meta:
+        managed = False
+        db_table = 'climate_scenarios'

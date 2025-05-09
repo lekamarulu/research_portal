@@ -53,7 +53,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background p-4">
       <Link href="/" className="absolute left-4 top-4 flex items-center gap-2 md:left-8 md:top-8">
         <CloudRain className="h-6 w-6 text-emerald-500" />
-        <span className="text-xl font-bold">RainfallDB</span>
+        <span className="text-xl font-bold">Research Portal</span>
       </Link>
 
       <Card className="w-full max-w-md">

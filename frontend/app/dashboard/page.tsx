@@ -9,86 +9,56 @@ import { CloudRain, Droplets, MapPin, RefreshCw } from "lucide-react"
 import { RainfallTable } from "@/components/rainfall-table"
 import { RainfallChart } from "@/components/rainfall-chart"
 import { useRouter } from "next/navigation"
+import { ApiErrorMessage } from "@/components/api-error-message"
+import { researchPortalApi } from "@/lib/api"
+import { ClimateScenario, Year, Rainfall, Station, StationMonthlyRainfall } from "@/lib/models"
+
 
 export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedScenario, setSelectedScenario] = useState("RCP45")
-  const [selectedStation, setSelectedStation] = useState("ST001")
-  const [selectedYear, setSelectedYear] = useState("2023")
+  const [selectedScenario, setSelectedScenario] = useState("OBSERVED")
+  const [selectedStation, setSelectedStation] = useState("Biharamulo")
+  const [selectedYear, setSelectedYear] = useState("1973")
 
-  // Mock data - in a real app, this would come from API
-  const [rainfallData, setRainfallData] = useState([])
-  const [stationData, setStationData] = useState([])
+  const [climateScenarioData, setClimateScenarioData] = useState<ClimateScenario[]>([])
+  const [yearData, setYearData] = useState<Year[]>([])
+  const [stationData, setStationData] = useState<Station[]>([])
+  const [rainfallData, setRainfallData] = useState<Rainfall[]>([])
+  const [stationMonthlyRainfallData, setStationMonthlyRainfallData] = useState<StationMonthlyRainfall[]>([])
 
+
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
-    // Simulate API fetch
+    // Fetch data from API
     const fetchData = async () => {
       setIsLoading(true)
       try {
-        // In a real app, you would fetch from your API
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        setError(null)
 
-        // Mock rainfall data
-        setRainfallData([
-          {
-            id: 1,
-            date_measured: "2023-01-15",
-            climate_scenario: "RCP45",
-            station: "ST001",
-            rainfall_total: 25.4,
-            month_name: "Jan",
-          },
-          {
-            id: 2,
-            date_measured: "2023-02-15",
-            climate_scenario: "RCP45",
-            station: "ST001",
-            rainfall_total: 30.2,
-            month_name: "Feb",
-          },
-          {
-            id: 3,
-            date_measured: "2023-03-15",
-            climate_scenario: "RCP45",
-            station: "ST001",
-            rainfall_total: 45.7,
-            month_name: "Mar",
-          },
-          {
-            id: 4,
-            date_measured: "2023-04-15",
-            climate_scenario: "RCP45",
-            station: "ST001",
-            rainfall_total: 50.1,
-            month_name: "Apr",
-          },
-          {
-            id: 5,
-            date_measured: "2023-05-15",
-            climate_scenario: "RCP45",
-            station: "ST001",
-            rainfall_total: 35.8,
-            month_name: "May",
-          },
-          {
-            id: 6,
-            date_measured: "2023-06-15",
-            climate_scenario: "RCP45",
-            station: "ST001",
-            rainfall_total: 20.3,
-            month_name: "Jun",
-          },
-        ])
+        //Fetch rainfall data
+        const stationMonthlyRainfallResult = await researchPortalApi.getStationMonthlyRainfallData({
+          scenario: selectedScenario,
+          station: selectedStation,
+          year: selectedYear,
+        })
+        setStationMonthlyRainfallData(stationMonthlyRainfallResult)
 
-        // Mock station data
-        setStationData([
-          { code: "ST001", name: "Station A", latitude: 34.05, longitude: -118.25 },
-          { code: "ST002", name: "Station B", latitude: 40.71, longitude: -74.01 },
-        ])
+        const stationResult = await researchPortalApi.getStations()
+        setStationData(stationResult)
+
+
+        const yearResult = await researchPortalApi.getYears()
+        setYearData(yearResult)
+
+        const climateScenarioResult = await researchPortalApi.getClimateScenarios()
+        setClimateScenarioData(climateScenarioResult)
+
       } catch (error) {
         console.error("Error fetching data:", error)
+        setError(error instanceof Error ? error.message : "Failed to fetch data")
+
       } finally {
         setIsLoading(false)
       }
@@ -100,9 +70,13 @@ export default function DashboardPage() {
   const refreshData = () => {
     // Simulate refreshing data
     setIsLoading(true)
-    setTimeout(() => setIsLoading(false), 1000)
+    setSelectedScenario((prev) => prev)
   }
 
+  const handeRetry = () => {
+    setError(null)
+    refreshData()
+  }
   return (
     <div className="container space-y-6 p-4 md:p-8">
       <div className="flex items-center justify-between">
@@ -144,10 +118,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {rainfallData.length > 0
-                ? (rainfallData.reduce((sum, item) => sum + item.rainfall_total, 0) / rainfallData.length).toFixed(1)
-                : "0"}{" "}
-              mm
+          
             </div>
             <p className="text-xs text-muted-foreground">Average across all records</p>
           </CardContent>
@@ -179,8 +150,11 @@ export default function DashboardPage() {
                       <SelectValue placeholder="Select scenario" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="RCP45">RCP4.5</SelectItem>
-                      <SelectItem value="RCP85">RCP8.5</SelectItem>
+                       {climateScenarioData.map((scenario) => (
+                        <SelectItem key={scenario.climate_scenario} value={scenario.climate_scenario}>
+                          {scenario.climate_scenario}: {scenario.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -204,8 +178,11 @@ export default function DashboardPage() {
                       <SelectValue placeholder="Select year" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="2022">2022</SelectItem>
-                      <SelectItem value="2023">2023</SelectItem>
+                      {yearData.map((year) => (
+                        <SelectItem key={year.year} value={year.year}>
+                          {year.year}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -213,14 +190,11 @@ export default function DashboardPage() {
 
               <Tabs defaultValue="chart" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="chart">Chart</TabsTrigger>
+                  {/* <TabsTrigger value="chart">Chart</TabsTrigger> */}
                   <TabsTrigger value="table">Table</TabsTrigger>
                 </TabsList>
-                <TabsContent value="chart" className="pt-4">
-                  <RainfallChart data={rainfallData} isLoading={isLoading} />
-                </TabsContent>
                 <TabsContent value="table" className="pt-4">
-                  <RainfallTable data={rainfallData} isLoading={isLoading} />
+                  <RainfallTable data={stationMonthlyRainfallData} isLoading={isLoading} />
                 </TabsContent>
               </Tabs>
             </div>

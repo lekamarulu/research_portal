@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -17,76 +17,73 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { researchPortalApi } from "@/lib/api"
+import { useRouter } from "next/navigation"
+import { ClimateScenario, Station, StationMonthlyRainfall, Year } from "@/lib/models"
 
 export default function RainfallPage() {
-  const [isLoading, setIsLoading] = useState(false)
-  const [filterScenario, setFilterScenario] = useState("")
-  const [filterStation, setFilterStation] = useState("")
-  const [filterYear, setFilterYear] = useState("")
+    const [isLoading, setIsLoading] = useState(true)
+    const [selectedScenario, setSelectedScenario] = useState("OBSERVED")
+    const [selectedStation, setSelectedStation] = useState("Biharamulo")
+    const [selectedYear, setSelectedYear] = useState("1973")
 
-  // Mock data - in a real app, this would come from API
-  const rainfallData = [
-    {
-      id: 1,
-      date_measured: "2023-01-15",
-      climate_scenario: "RCP45",
-      station: "ST001",
-      rainfall_total: 25.4,
-      month_name: "Jan",
-    },
-    {
-      id: 2,
-      date_measured: "2023-02-15",
-      climate_scenario: "RCP45",
-      station: "ST001",
-      rainfall_total: 30.2,
-      month_name: "Feb",
-    },
-    {
-      id: 3,
-      date_measured: "2023-03-15",
-      climate_scenario: "RCP45",
-      station: "ST001",
-      rainfall_total: 45.7,
-      month_name: "Mar",
-    },
-    {
-      id: 4,
-      date_measured: "2023-01-15",
-      climate_scenario: "RCP85",
-      station: "ST002",
-      rainfall_total: 22.1,
-      month_name: "Jan",
-    },
-    {
-      id: 5,
-      date_measured: "2023-02-15",
-      climate_scenario: "RCP85",
-      station: "ST002",
-      rainfall_total: 28.5,
-      month_name: "Feb",
-    },
-    {
-      id: 6,
-      date_measured: "2023-03-15",
-      climate_scenario: "RCP85",
-      station: "ST002",
-      rainfall_total: 40.3,
-      month_name: "Mar",
-    },
-  ]
+    const [climateScenarioData, setClimateScenarioData] = useState<ClimateScenario[]>([])
+    const [yearData, setYearData] = useState<Year[]>([])
+    const [stationData, setStationData] = useState<Station[]>([])
+    const [stationMonthlyRainfallData, setStationMonthlyRainfallData] = useState<StationMonthlyRainfall[]>([])
 
-  const handleFilter = () => {
-    setIsLoading(true)
-    // In a real app, you would fetch filtered data from API
-    setTimeout(() => setIsLoading(false), 500)
-  }
 
-  const handleExport = () => {
-    // In a real app, you would generate and download a CSV file
-    alert("Exporting data...")
-  }
-
+    const [error, setError] = useState<string | null>(null)
+    const router = useRouter()
+  
+    useEffect(() => {
+      // Fetch data from API
+      const fetchData = async () => {
+        setIsLoading(true)
+        try {
+          setError(null)
+  
+          //Fetch rainfall data
+          const stationMonthlyRainfallResult = await researchPortalApi.getStationMonthlyRainfallData({
+            scenario: selectedScenario,
+            station: selectedStation,
+            year: selectedYear,
+          })
+          setStationMonthlyRainfallData(stationMonthlyRainfallResult)
+  
+          const stationResult = await researchPortalApi.getStations()
+          setStationData(stationResult)
+  
+  
+          const yearResult = await researchPortalApi.getYears()
+          setYearData(yearResult)
+  
+          const climateScenarioResult = await researchPortalApi.getClimateScenarios()
+          setClimateScenarioData(climateScenarioResult)
+  
+        } catch (error) {
+          console.error("Error fetching data:", error)
+          setError(error instanceof Error ? error.message : "Failed to fetch data")
+  
+        } finally {
+          setIsLoading(false)
+        }
+      }
+  
+      fetchData()
+    }, [selectedScenario, selectedStation, selectedYear])
+  
+    const refreshData = () => {
+      // Simulate refreshing data
+      setIsLoading(true)
+      setSelectedScenario((prev) => prev)
+    }
+  
+    const handeRetry = () => {
+      setError(null)
+      refreshData()
+    }
+  
   return (
     <div className="container space-y-6 p-4 md:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -154,7 +151,7 @@ export default function RainfallPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          <Button variant="outline" onClick={handleExport}>
+          <Button variant="outline">
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
@@ -171,20 +168,23 @@ export default function RainfallPage() {
             <div className="flex flex-col gap-4 sm:flex-row">
               <div className="grid w-full gap-2">
                 <Label htmlFor="scenario">Climate Scenario</Label>
-                <Select value={filterScenario} onValueChange={setFilterScenario}>
+                <Select value={selectedScenario} onValueChange={setSelectedScenario}>
                   <SelectTrigger id="scenario">
                     <SelectValue placeholder="All scenarios" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All scenarios</SelectItem>
-                    <SelectItem value="RCP45">RCP4.5</SelectItem>
-                    <SelectItem value="RCP85">RCP8.5</SelectItem>
+                    <SelectItem value="">All scenarios</SelectItem>
+                    {climateScenarioData.map((scenario) => (
+                      <SelectItem key={scenario.climate_scenario} value={scenario.climate_scenario}>
+                        {scenario.climate_scenario}: {scenario.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid w-full gap-2">
+              {/* <div className="grid w-full gap-2">
                 <Label htmlFor="station">Station</Label>
-                <Select value={filterStation} onValueChange={setFilterStation}>
+                <Select value={selectedStation} onValueChange={setStationData}>
                   <SelectTrigger id="station">
                     <SelectValue placeholder="All stations" />
                   </SelectTrigger>
@@ -197,7 +197,7 @@ export default function RainfallPage() {
               </div>
               <div className="grid w-full gap-2">
                 <Label htmlFor="year">Year</Label>
-                <Select value={filterYear} onValueChange={setFilterYear}>
+                <Select value={selectedYear} onValueChange={setYearData}>
                   <SelectTrigger id="year">
                     <SelectValue placeholder="All years" />
                   </SelectTrigger>
@@ -207,16 +207,16 @@ export default function RainfallPage() {
                     <SelectItem value="2023">2023</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
               <div className="flex items-end">
-                <Button onClick={handleFilter}>
+                <Button>
                   <Filter className="mr-2 h-4 w-4" />
                   Filter
                 </Button>
               </div>
             </div>
 
-            <RainfallTable data={rainfallData} isLoading={isLoading} />
+            {/* <RainfallTable data={stationMonthlyRainfallData} isLoading={isLoading} /> */}
           </div>
         </CardContent>
       </Card>

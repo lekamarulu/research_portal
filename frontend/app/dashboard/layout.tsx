@@ -54,8 +54,8 @@ export default function DashboardLayout({
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Rainfall Data", href: "/dashboard/rainfall", icon: CloudRain },
-    { name: "Stations", href: "/dashboard/stations", icon: Map },
+    { name: "Rainfall Data", href: "/rainfall", icon: CloudRain },
+    { name: "Stations", href: "/stations", icon: Map },
     { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ]
@@ -76,7 +76,7 @@ export default function DashboardLayout({
                 <div className="flex h-full flex-col">
                   <div className="flex items-center gap-2 py-4">
                     <CloudRain className="h-6 w-6 text-emerald-500" />
-                    <span className="text-xl font-bold">RainfallDB</span>
+                    <span className="text-xl font-bold">Research Portal</span>
                   </div>
                   <nav className="flex-1 space-y-2 py-4">
                     {navItems.map((item) => (
@@ -100,7 +100,7 @@ export default function DashboardLayout({
             </Sheet>
             <div className="hidden md:flex md:items-center md:gap-2">
               <CloudRain className="h-6 w-6 text-emerald-500" />
-              <span className="text-xl font-bold">RainfallDB</span>
+              <span className="text-xl font-bold">Research Portal</span>
             </div>
           </div>
           <div className="flex items-center gap-4">

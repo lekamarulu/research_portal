@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Rainfall,Station
+from .models import ClimateScenario, Rainfall,Station
 
 class RainfallSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,7 +11,14 @@ class StationSerializer(serializers.ModelSerializer):
         model = Station
         fields = '__all__'
 
-#
+
+
+class ClimateScenarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClimateScenario
+        fields = '__all__'
+
+
 class RainfallPivotSerializer(serializers.Serializer):
     month_name = serializers.CharField(max_length=25)
     stations = serializers.DictField(child=serializers.FloatField(allow_null=True))
