@@ -1,0 +1,88 @@
+.table thead {
+    background: linear-gradient(0deg, rgb(213, 213, 213) 0%, rgb(252, 252, 252) 50%, rgb(241, 242, 242) 100%);
+}
+
+.table thead.thead-lg th {
+    padding: 4px 2.5px;
+}
+
+.table td {
+    padding: .41rem;
+}
+
+.dataTables_wrapper {
+    padding: 0;
+}
+
+.btn-group .btn + .btn {
+    margin-left: 1px;
+    margin-right: 1px;
+}
+
+.content-body .ibox-body {
+    text-align: left !important;
+}
+
+.content-header {
+    position: relative;
+}
+
+.content-wrapper {
+    position: relative;
+    min-height: 100vh;
+}
+
+hr {
+    margin-bottom: 0.1rem;
+}
+
+.form-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background-color: #FDFEFF;
+    background-clip: padding-box;
+    border: 1px solid rgba(0, 0, 0, .2);
+    border-radius: 0;
+    outline: 0;
+}
+
+.form-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 15px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.form-title {
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+
+.form-body {
+    position: relative;
+    flex: 1 1 auto;
+    padding: 15px;
+}
+
+.form-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.content-title {
+    font-size: 16px;
+    font-weight: bolder;
+    color: #34495f;
+    border-bottom: 2px solid #d0d2d4;
+}
+
+tbody td .btn-sm {
+    padding: 0.15rem 0.35rem;
+    -webkit-border-radius: 0;
+    border-radius: 0;
+}

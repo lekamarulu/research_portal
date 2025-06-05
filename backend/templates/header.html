@@ -1,0 +1,220 @@
+{% load static %}
+<style>
+    .header .admin-dropdown-menu .dropdown-header {
+        padding: 15px 100px;
+    }
+
+    .header .page-brand {
+        color: #fff;
+        background-color: #379cd8;
+        height: 160px;
+        border-bottom: 2px solid #429ac1;
+    }
+
+    .header .page-brand .brand {
+        text-align: center;
+        margin: 0 35px;
+    }
+
+    .page-sidebar {
+        margin-top: 160px;
+        background-color: #208dce;
+        position: fixed;
+    }
+
+    .side-menu > li a:hover, .side-menu > li a:focus {
+        color: #fff;
+        background-color: #0f5391;
+    }
+
+    .side-menu > li.active {
+        background-color: #0f5391ab;
+    }
+
+    .side-menu > li.active > a {
+        color: #4690bf;
+        background-color: #0f5391;
+    }
+
+    .side-menu li {
+        outline: 0;
+        border-bottom: 1px solid #429ac1;
+    }
+
+    .side-menu > li a {
+        white-space: nowrap;
+        color: #fff;
+    }
+
+    .side-menu li .sidebar-item-icon {
+        color: #ffffff;
+    }
+
+    .side-menu > li.active > a {
+        color: #ffffff;
+    }
+
+    .side-menu > li.active > a .arrow, .side-menu > li.active > a .sidebar-item-icon {
+        color: #ffffff;
+    }
+
+    .side-menu li .arrow {
+        color: #ffffff;
+    }
+
+    body:not(.fixed-layout).sidebar-mini .side-menu > li.active > a .sidebar-item-icon {
+        color: #ffffff;
+    }
+
+    body:not(.fixed-layout).sidebar-mini .side-menu li .sidebar-item-icon {
+        color: #ffffff;
+    }
+
+    .page-heading .page-title {
+        font-size: 20px;
+        margin: 20px 0 20px 0;
+        font-weight: 600;
+        color: #3778a9;
+    }
+</style>
+<header class="header">
+    <div class="page-brand">
+        <a class="link">
+                 <span class="brand">
+                     <img src="{% static 'img/logo.png' %}" width="120" height="120"/>
+                 </span>
+            <span class="brand-mini">
+                    <img src="{% static 'img/logo.png' %}" width="130px" height="40px"/>
+                </span>
+        </a>
+    </div>
+    <div class="flexbox flex-1">
+        <!-- START TOP-LEFT TOOLBAR-->
+        <ul class="nav navbar-toolbar">
+            <li>
+                <a class="nav-link sidebar-toggler js-sidebar-toggler" href="javascript:;">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </a>
+            </li>
+            <li class="page-heading">
+                <h1 class="page-title">{{ module | upper }} <small class="text-black-50 font-weight-bold">{{ sub_module | upper }}</small></h1>
+            </li>
+        </ul>
+        <!-- END TOP-LEFT TOOLBAR-->
+        <!-- START TOP-RIGHT TOOLBAR-->
+        <ul class="nav navbar-toolbar">
+            <li class="dropdown dropdown-inbox" title="Switchboard">
+                <a class="nav-link toolbar-icon" href="{% url 'switchboard' %}"><i class="ti-layout-grid3-alt"></i></a>
+            </li>
+            <li class="dropdown dropdown-inbox" title="Messages">
+                <a class="nav-link dropdown-toggle toolbar-icon" data-toggle="dropdown" href="javascript:;"><i
+                        class="ti-email"></i>
+                    <span class="envelope-badge">7</span>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right dropdown-menu-media">
+                    <div class="dropdown-arrow"></div>
+                    <div class="dropdown-header text-center">
+                        <div>
+                            <span class="font-18"><strong>7 New</strong> Messages</span>
+                        </div>
+                        <a class="text-muted font-13" href="javascript:;">view all</a>
+                    </div>
+                    <div class="p-3">
+                        <div class="media-list media-list-divider scroller" data-height="350px" data-color="#71808f">
+                        </div>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown dropdown-notification" title="Notifications">
+                <a class="nav-link dropdown-toggle toolbar-icon" data-toggle="dropdown" href="javascript:;"><i
+                        class="ti-bell rel"><span class="notify-signal"></span></i></a>
+                <div class="dropdown-menu dropdown-menu-right dropdown-menu-media">
+                    <div class="dropdown-arrow"></div>
+                    <div class="dropdown-header text-center">
+                        <div>
+                            <span class="font-18"><strong>14 New</strong> Notifications</span>
+                        </div>
+                        <a class="text-muted font-13" href="javascript:;">view all</a>
+                    </div>
+                    <div class="p-3">
+                        <ul class="timeline scroller" data-height="320px">
+                            <li class="timeline-item"><i class="ti-check timeline-icon"></i>2 Issue fixed
+                                <small class="float-right text-muted ml-2 nowrap">Just now</small>
+                            </li>
+                            <li class="timeline-item"><i class="ti-announcement timeline-icon"></i>
+                                <span>7 new feedback
+                                            <span class="badge badge-warning badge-pill ml-2">important</span>
+                                        </span>
+                                <small class="float-right text-muted">5 mins</small>
+                            </li>
+                            <li class="timeline-item"><i class="ti-truck timeline-icon"></i>25 new orders sent
+                                <small class="float-right text-muted ml-2 nowrap">24 mins</small>
+                            </li>
+                            <li class="timeline-item"><i class="ti-shopping-cart timeline-icon"></i>12 New orders
+                                <small class="float-right text-muted ml-2 nowrap">45 mins</small>
+                            </li>
+                            <li class="timeline-item"><i class="ti-user timeline-icon"></i>18 new users registered
+                                <small class="float-right text-muted ml-2 nowrap">1 hrs</small>
+                            </li>
+                            <li class="timeline-item"><i class="ti-harddrives timeline-icon"></i>
+                                <span>Server Error
+                                            <span class="badge badge-success badge-pill ml-2">resolved</span>
+                                        </span>
+                                <small class="float-right text-muted">2 hrs</small>
+                            </li>
+                            <li class="timeline-item"><i class="ti-info-alt timeline-icon"></i>
+                                <span>System Warning
+                                            <a class="text-purple ml-2">Check</a>
+                                        </span>
+                                <small class="float-right text-muted ml-2 nowrap">12:07</small>
+                            </li>
+                            <li class="timeline-item"><i class="fa fa-file-excel-o timeline-icon"></i>The invoice is
+                                ready
+                                <small class="float-right text-muted ml-2 nowrap">12:30</small>
+                            </li>
+                            <li class="timeline-item"><i class="ti-shopping-cart timeline-icon"></i>5 New Orders
+                                <small class="float-right text-muted ml-2 nowrap">13:45</small>
+                            </li>
+                            <li class="timeline-item"><i class="ti-arrow-circle-up timeline-icon"></i>Production server
+                                up
+                                <small class="float-right text-muted ml-2 nowrap">1 days ago</small>
+                            </li>
+                            <li class="timeline-item"><i class="ti-harddrives timeline-icon"></i>Server overloaded 91%
+                                <small class="float-right text-muted ml-2 nowrap">2 days ago</small>
+                            </li>
+                            <li class="timeline-item"><i class="ti-info-alt timeline-icon"></i>Server error
+                                <small class="float-right text-muted ml-2 nowrap">2 days ago</small>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </li>
+            <li class="dropdown dropdown-user" title="User options">
+                <a class="nav-link dropdown-toggle link" data-toggle="dropdown" >
+                    <span>{{ request.user }}</span>
+                    {{ request.user.employee }}
+                    <img src="{% static 'img/users/user-avatar.png' %}" alt="image"/>
+                </a>
+                <div class="dropdown-menu dropdown-arrow dropdown-menu-right admin-dropdown-menu">
+                    <div class="dropdown-arrow"></div>
+                    <div class="dropdown-header">
+                        <div class="">
+                            <h5 class="font-strong text-white">{{ request.user.first_name }} {{ request.user.last_name }}</h5>
+                        </div>
+                    </div>
+                    <div class="admin-menu-features">
+                        <a class="admin-features-item" href="javascript:;"><i class="fa fa-support"></i>
+                            <span>Support</span>
+                        </a>
+                        <a class="admin-features-item" href="{% url 'logout' %}"><i class="fa fa-sign-out"></i>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </li>
+        </ul>
+        <!-- END TOP-RIGHT TOOLBAR-->
+    </div>
+</header>

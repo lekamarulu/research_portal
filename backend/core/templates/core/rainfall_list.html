@@ -1,0 +1,31 @@
+{% extends "core/base.html" %}
+{% block title %}Rainfall Records{% endblock %}
+{% block content %}
+<h2>Rainfall Records</h2>
+<a class="btn btn-primary mb-2" href="{% url 'rainfall_create' %}">Add Rainfall</a>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Station</th>
+            <th>Date</th>
+            <th>Scenario</th>
+            <th>Total</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in object_list %}
+        <tr>
+            <td>{{ item.station }}</td>
+            <td>{{ item.date_measured }}</td>
+            <td>{{ item.climate_scenario }}</td>
+            <td>{{ item.rainfall_total }}</td>
+            <td>
+                <a href="{% url 'rainfall_update' item.id %}" class="btn btn-sm btn-warning">Edit</a>
+                <a href="{% url 'rainfall_delete' item.id %}" class="btn btn-sm btn-danger">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

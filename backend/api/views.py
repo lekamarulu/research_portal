@@ -1,28 +1,44 @@
-import io
-import calendar
-import pandas as pd
-from django.db import connection
-
-from django.http import HttpResponse
-from django.db.models import Sum
-from drf_spectacular.types import OpenApiTypes
-from reportlab.pdfgen import canvas
-
-from rest_framework import viewsets, status
-from rest_framework.generics import GenericAPIView
-from rest_framework.views import APIView
-from rest_framework.response import Response
-
 from drf_spectacular.utils import (
     extend_schema_view,
     extend_schema,
     OpenApiParameter,
     OpenApiExample,
 )
+from rest_framework import status
+from rest_framework import viewsets
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .models import ClimateScenario, Rainfall, Station
-from .serializers import ClimateScenarioSerializer, RainfallSerializer, StationSerializer, RainfallPivotSerializer, StationMonthlyPivotSerializer
-from .filters import RainfallFilter
+from .filters import RainfallFilter, DischargeFilter, TemperatureFilter, ResearchDocumentFilter, \
+    ResearchDocumentDataFilter
+from .models import ClimateScenario, Rainfall, Station, Temperature, Discharge, ResearchDocument, ResearchDataType, \
+    ResearchDocumentData, RainfallPivotDaily, RainfallPivotMonthly
+from .serializers import ClimateScenarioSerializer, RainfallSerializer, StationSerializer, \
+    DischargeSerializer, TemperatureSerializer, ResearchDocumentSerializer, ResearchDataTypeSerializer, \
+    ResearchDocumentDataSerializer, RainfallPivotDailySerializer, RainfallPivotMonthlySerializer
+
+
+# @extend_schema(tags=['ResearchDocument'])
+class ResearchDocumentViewSet(viewsets.ModelViewSet):
+    queryset = ResearchDocument.objects.all()
+    serializer_class = ResearchDocumentSerializer
+    # filter_backends = [DjangoFilterBackend]
+    filterset_class = ResearchDocumentFilter
+
+
+# @extend_schema(tags=['ResearchDocumentData'])
+class ResearchDocumentDataViewSet(viewsets.ModelViewSet):
+    queryset = ResearchDocumentData.objects.all()
+    serializer_class = ResearchDocumentDataSerializer
+    # filter_backends = [DjangoFilterBackend]
+    filterset_class = ResearchDocumentDataFilter
+
+
+# @extend_schema(tags=['ResearchDataType'])
+class ResearchDataTypeViewSet(viewsets.ModelViewSet):
+    queryset = ResearchDataType.objects.all()
+    serializer_class = ResearchDataTypeSerializer
+
 
 class YearsView(APIView):
 
@@ -34,7 +50,6 @@ class YearsView(APIView):
         )
         data = [{'year': y} for y in years]
         return Response(data)
-
 
 
 class StationViewSet(viewsets.ModelViewSet):
@@ -83,606 +98,461 @@ class ClimateScenarioViewSet(viewsets.ModelViewSet):
         ]
     )
 )
+class DischargeViewSet(viewsets.ModelViewSet):
+    queryset = Discharge.objects.all()
+    serializer_class = DischargeSerializer
+    filterset_class = DischargeFilter
+    pagination_class = None
+
+
 class RainfallViewSet(viewsets.ModelViewSet):
     queryset = Rainfall.objects.all()
     serializer_class = RainfallSerializer
     filterset_class = RainfallFilter
     pagination_class = None
 
-
-class RainfallMonthlyPivotView1(APIView):
-
     @extend_schema(
-        description="Get a dynamic pivot table of rainfall data.",
-        responses={200: RainfallPivotSerializer(many=True)},
         parameters=[
-            OpenApiParameter(name='climate_scenario', description='Climate scenario filter', required=True, type=str),
-            OpenApiParameter(name='year_measured', description='Year measured filter', required=True, type=int),
-            OpenApiParameter(name='station_code', description='Station code filter (optional)', required=False,
-                             type=str)
+            OpenApiParameter(
+                name='station_code',
+                description='Filter by station code',
+                required=False,
+                type=str,
+                enum=[station.code for station in Station.objects.all()],  # assuming `code` is unique
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name='year_measured',
+                description='Year the rainfall was measured',
+                required=False,
+                type=int,
+                enum=[year for year in range(1970, 2101)],
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name='climate_scenario',
+                description='Climate scenario (e.g., RCP4.5, RCP8.5)',
+                required=False,
+                type=str,
+                enum=[scenario.climate_scenario for scenario in ClimateScenario.objects.all()],
+                # assuming `code` is unique
+                location=OpenApiParameter.QUERY,
+            ),
         ]
     )
-    def get(self, request, *args, **kwargs):
-        climate_scenario = request.query_params.get('climate_scenario')
-        year_measured = request.query_params.get('year_measured')
-        station_code = request.query_params.get('station_code')
-
-        # Step 1: Get station codes
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT DISTINCT station_code
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY station_code
-            """, [climate_scenario, year_measured, station_code, station_code])
-            station_codes = [row[0] for row in cursor.fetchall()]
-
-        if not station_codes:
-            return Response({"detail": "No data available for the specified filters."},
-                            status=status.HTTP_404_NOT_FOUND)
-
-        # Step 2: Build dynamic SQL for crosstab
-        column_list = ", ".join([f'"{code}" float' for code in station_codes])
-        crosstab_columns = ", ".join([f'"{code}"' for code in station_codes])
-
-        crosstab_query = f"""
-            SELECT month_measured, {crosstab_columns}
-            FROM crosstab(
-                $$
-                SELECT month_measured, station_code, rainfall_max
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY month_measured, station_code
-                $$,
-                $$
-                SELECT DISTINCT station_code
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY station_code
-                $$
-            ) AS pivot_table (
-                month_measured int,
-                {column_list}
-            );
-        """
-
-        # Step 3: Execute the pivot query
-        with connection.cursor() as cursor:
-            cursor.execute(crosstab_query, [
-                climate_scenario, year_measured, station_code, station_code,
-                climate_scenario, year_measured, station_code, station_code
-            ])
-            rows = cursor.fetchall()
-
-        if not rows:
-            return Response({"detail": "No data found for the specified filters."}, status=status.HTTP_404_NOT_FOUND)
-
-        # Step 4: Structure results to match serializer
-        data = []
-        for row in rows:
-            month = row[0]
-            values = {station: row[i + 1] for i, station in enumerate(station_codes)}
-            data.append({
-                'month_measured': month,
-                'stations': values
-            })
-
-        serializer = RainfallPivotSerializer(data=data, many=True)
-        if serializer.is_valid():
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
 
-class RainfallMonthlyPivotView2(APIView):
+class TemperatureViewSet(viewsets.ModelViewSet):
+    queryset = Temperature.objects.all()
+    serializer_class = TemperatureSerializer
+    filterset_class = TemperatureFilter
+    pagination_class = None
 
-    @extend_schema(
-        description="Get a dynamic pivot table of rainfall data.",
-        responses={200: RainfallPivotSerializer(many=True)},
-        parameters=[
-            OpenApiParameter(name='climate_scenario', description='Climate scenario filter', required=True, type=str),
-            OpenApiParameter(name='year_measured', description='Year measured filter', required=True, type=int),
-            OpenApiParameter(name='station_code', description='Station code filter (optional)', required=False,
-                             type=str)
-        ]
+
+# class StandardResultsSetPagination(PageNumberPagination):
+# page_size = 50
+# page_size_query_param = 'page_size'
+# max_page_size = 200
+#
+#
+# @extend_schema(
+#     summary="Get daily rainfall pivot data",
+#     description="Filter by climate_scenario, year_measured, and station_code",
+#     tags=["RainfallPivotDaily"],
+#     parameters=[
+#         OpenApiParameter("climate_scenario", str, OpenApiParameter.QUERY, description="Climate scenario"),
+#         OpenApiParameter("year_measured", int, OpenApiParameter.QUERY, description="Year"),
+#         OpenApiParameter("station_code", str, OpenApiParameter.QUERY, description="Station code"),
+#         OpenApiParameter("page", int, OpenApiParameter.QUERY, description="Page number"),
+#         OpenApiParameter("page_size", int, OpenApiParameter.QUERY, description="Items per page"),
+#     ]
+# )
+#
+# class RainfallPivotDailyAPIView(generics.ListAPIView):
+#     queryset = RainfallPivotDaily.objects.all()
+#     serializer_class = RainfallPivotDailySerializer
+#     # pagination_class = StandardResultsSetPagination
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_class = RainfallPivotFilter
+#
+#
+# @extend_schema(
+#     summary="Get monthly rainfall pivot data",
+#     description="Filter by climate_scenario, year_measured, and station_code",
+#     tags=["RainfallPivotMonthly"],
+#     parameters=[
+#         OpenApiParameter("climate_scenario", str, OpenApiParameter.QUERY, description="Climate scenario"),
+#         OpenApiParameter("year_measured", int, OpenApiParameter.QUERY, description="Year"),
+#         OpenApiParameter("station_code", str, OpenApiParameter.QUERY, description="Station code"),
+#         OpenApiParameter("page", int, OpenApiParameter.QUERY, description="Page number"),
+#         OpenApiParameter("page_size", int, OpenApiParameter.QUERY, description="Items per page"),
+#     ]
+# )
+#
+# class RainfallPivotMonthlyAPIView(generics.ListAPIView):
+#     queryset = RainfallPivotMonthly.objects.all()
+#     serializer_class = RainfallPivotMonthlySerializer
+#     # pagination_class = StandardResultsSetPagination
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_class = RainfallPivotFilter
+#
+
+
+# class RainfallStationMonthlyPivot(APIView):
+#
+#     @extend_schema(
+#         description="Get a pivot table with stations as rows and months as columns.",
+#         responses={200: StationMonthlyPivotSerializer(many=True)},
+#         parameters=[
+#             OpenApiParameter(name='climate_scenario', description='Climate scenario filter', required=True, type=str),
+#             OpenApiParameter(name='year_measured', description='Year measured filter', required=True, type=int),
+#             OpenApiParameter(name='station_code', description='Station code filter (optional)', required=False,
+#                              type=str)
+#         ]
+#     )
+#     def get(self, request, *args, **kwargs):
+#         climate_scenario = request.query_params.get('scenario')
+#         year_measured = request.query_params.get('year')
+#         station_code = request.query_params.get('station')
+#
+#         # Step 1: Manually define logical month order
+#         logical_months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
+#                           'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+#
+#         with connection.cursor() as cursor:
+#             cursor.execute("""
+#                 SELECT DISTINCT month_name
+#                 FROM rainfall
+#                 WHERE climate_scenario = %s AND year_measured = %s
+#                 AND (%s IS NULL OR station_code = %s)
+#             """, [climate_scenario, year_measured, station_code, station_code])
+#             available_months = {row[0] for row in cursor.fetchall()}
+#
+#         # Step 3: Final ordered list of months based on logical order
+#         month_names = [m for m in logical_months if m in available_months]
+#
+#         if not month_names:
+#             return Response({"detail": "No data available for the specified filters."},
+#                             status=status.HTTP_200_OK)
+#
+#         # Step 4: Build dynamic SQL for crosstab
+#         column_list = ", ".join([f'"{month}" float' for month in month_names])
+#         crosstab_columns = ", ".join([f'"{month}"' for month in month_names])
+#
+#         crosstab_query = f"""
+#             SELECT station_code, {crosstab_columns}
+#             FROM crosstab(
+#                 $$
+#                 SELECT station_code, month_name, rainfall_total
+#                 FROM rainfall
+#                 WHERE climate_scenario = %s AND year_measured = %s
+#                 AND (%s IS NULL OR station_code = %s)
+#                 ORDER BY station_code,
+#                          CASE month_name
+#                              {' '.join([f"WHEN '{m}' THEN {i + 1}" for i, m in enumerate(logical_months)])}
+#                              ELSE 999
+#                          END
+#                 $$,
+#                 $$
+#                 SELECT unnest(ARRAY[{', '.join([f"'{m}'" for m in month_names])}])
+#                 $$
+#             ) AS pivot_table (
+#                 station_code character varying(25),
+#                 {column_list}
+#             );
+#         """
+#
+#         # Step 5: Execute the pivot query
+#         with connection.cursor() as cursor:
+#             cursor.execute(crosstab_query, [
+#                 climate_scenario, year_measured, station_code, station_code
+#             ])
+#             rows = cursor.fetchall()
+#
+#         if not rows:
+#             return Response({"detail": "No data found for the specified filters."},
+#                             status=status.HTTP_404_NOT_FOUND)
+#
+#         # Step 6: Structure results
+#         data = []
+#         for row in rows:
+#             station = row[0]
+#             values = {
+#                 month: f"{row[i + 1]:.2f}" if row[i + 1] is not None else None
+#                 for i, month in enumerate(month_names)
+#             }
+#             data.append({
+#                 'station_code': station,
+#                 'months': values
+#             })
+#
+#         return Response(data, status=status.HTTP_200_OK)
+#
+#
+# class RainfallMonthlyPivot1(APIView):
+#
+#     @extend_schema(
+#         description="Get a pivot table with stations as rows and months as columns.",
+#         responses={200: RainfallMonthlyPivotSerializer(many=True)},
+#         parameters=[
+#             OpenApiParameter(name='climate_scenario', description='Climate scenario filter', required=True, type=str),
+#             OpenApiParameter(name='year_measured', description='Year measured filter', required=False, type=int),
+#             OpenApiParameter(name='station_code', description='Station code filter (optional)', required=False,
+#                              type=str)
+#         ]
+#     )
+#     def get(self, request, *args, **kwargs):
+#         climate_scenario = request.query_params.get('scenario')
+#         year_measured = request.query_params.get('year')
+#         station_code = request.query_params.get('station')
+#
+#         print(climate_scenario, year_measured, station_code)
+#
+#         data = []
+#         with connection.cursor() as cursor:
+#             if station_code and climate_scenario and year_measured:
+#                 cursor.execute("""
+#                     SELECT month_day AS rowheader, jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec
+#                     FROM public.rainfall_pivot_daily
+#                     WHERE climate_scenario = %s AND year_measured = %s
+#                       AND (%s IS NULL OR station_code = %s)
+#                 """, [climate_scenario, year_measured, station_code, station_code])
+#                 rows = cursor.fetchall()
+#                 columns = [col[0] for col in cursor.description]
+#
+#             elif climate_scenario and year_measured and (station_code is None or station_code == ''):
+#                 cursor.execute("""
+#                     SELECT station_code AS rowheader, jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec
+#                     FROM public.rainfall_pivot_monthly
+#                     WHERE climate_scenario = %s AND year_measured = %s
+#                 """, [climate_scenario, year_measured])
+#                 rows = cursor.fetchall()
+#                 columns = [col[0] for col in cursor.description]
+#
+#             elif climate_scenario and (year_measured is None or year_measured == '') and (
+#                     station_code is None or station_code == ''):
+#                 cursor.execute("""
+#                     SELECT year_measured AS rowheader, jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec
+#                     FROM public.rainfall_pivot_monthly
+#                     WHERE climate_scenario = %s
+#                 """, [climate_scenario])
+#                 rows = cursor.fetchall()
+#                 columns = [col[0] for col in cursor.description]
+#
+#         data = [dict(zip(columns, row)) for row in rows]
+#         return Response(data, status=status.HTTP_200_OK)
+#
+
+# class RainfallMonthlyPivotView1(APIView):
+#
+#     @extend_schema(
+#         description="Get a pivot table with stations/years as rows and months as columns.",
+#         responses={200: RainfallMonthlyPivotSerializer(many=True)},
+#         parameters=[
+#             OpenApiParameter(name='climate_scenario', description='Climate scenario filter', required=True, type=str),
+#             OpenApiParameter(name='year_measured', description='Year measured filter (optional)', required=False,
+#                              type=int),
+#             OpenApiParameter(name='station_code', description='Station code filter (optional)', required=False,
+#                              type=str)
+#         ]
+#     )
+#     def get(self, request, *args, **kwargs):
+#         climate_scenario = request.query_params.get('climate_scenario')
+#         year_measured = request.query_params.get('year_measured')
+#         station_code = request.query_params.get('station_code')
+#
+#         # No data unless climate_scenario is provided
+#         if not climate_scenario:
+#             return Response([], status=status.HTTP_200_OK)
+#
+#         rows = []
+#         columns = []
+#
+#         with connection.cursor() as cursor:
+#             # Case 1: climate_scenario + station_code (year_measured is null)
+#             if climate_scenario and station_code and not year_measured:
+#                 cursor.execute("""
+#                     SELECT climate_scenario,station_code,year_measured, jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec
+#                     FROM public.rainfall_pivot_monthly
+#                     WHERE climate_scenario = %s AND station_code = %s
+#                 """, [climate_scenario, station_code])
+#                 rows = cursor.fetchall()
+#                 columns = [col[0] for col in cursor.description]
+#
+#             # Case 2: climate_scenario + year_measured (station_code is null)
+#             elif climate_scenario and year_measured and not station_code:
+#                 cursor.execute("""
+#                     SELECT climate_scenario,station_code,year_measured, jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec
+#                     FROM public.rainfall_pivot_monthly
+#                     WHERE climate_scenario = %s AND year_measured = %s
+#                 """, [climate_scenario, year_measured])
+#                 rows = cursor.fetchall()
+#                 columns = [col[0] for col in cursor.description]
+#
+#             # Case 3: climate_scenario + year_measured + station_code
+#             elif climate_scenario and year_measured and station_code:
+#                 cursor.execute("""
+#                     SELECT climate_scenario,station_code,year_measured, jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec
+#                     FROM public.rainfall_pivot_daily
+#                     WHERE climate_scenario = %s AND year_measured = %s AND station_code = %s
+#                 """, [climate_scenario, year_measured, station_code])
+#                 rows = cursor.fetchall()
+#                 columns = [col[0] for col in cursor.description]
+#
+#             # Case 4: climate_scenario only or invalid combo — return empty
+#             else:
+#                 return Response([], status=status.HTTP_200_OK)
+#
+#         data = [dict(zip(columns, row)) for row in rows]
+#         return Response(data, status=status.HTTP_200_OK)
+#
+#
+# class RainfallDailyPivotView1(APIView):
+#
+#     @extend_schema(
+#         description="Get a pivot table with stations/years as rows and months as columns.",
+#         responses={200: RainfallDailyPivotSerializer(many=True)},
+#         parameters=[
+#             OpenApiParameter(name='climate_scenario', description='Climate scenario filter', required=True, type=str),
+#             OpenApiParameter(name='year_measured', description='Year measured filter (optional)', required=False,
+#                              type=int),
+#             OpenApiParameter(name='station_code', description='Station code filter (optional)', required=False,
+#                              type=str)
+#         ]
+#     )
+#     def get(self, request, *args, **kwargs):
+#         climate_scenario = request.query_params.get('climate_scenario')
+#         year_measured = request.query_params.get('year_measured')
+#         station_code = request.query_params.get('station_code')
+#
+#         # No data unless climate_scenario is provided
+#         if not climate_scenario:
+#             return Response([], status=status.HTTP_200_OK)
+#
+#         if not station_code:
+#             return Response([], status=status.HTTP_200_OK)
+#
+#         if not year_measured:
+#             return Response([], status=status.HTTP_200_OK)
+#
+#         rows = []
+#         columns = []
+#
+#         with connection.cursor() as cursor:
+#             cursor.execute("""
+#                 SELECT climate_scenario, year_measured, station_code, month_day, jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec
+#                 FROM public.rainfall_pivot_daily
+#                 WHERE climate_scenario = %s AND year_measured = %s AND station_code = %s
+#             """, [climate_scenario, year_measured, station_code])
+#             rows = cursor.fetchall()
+#             columns = [col[0] for col in cursor.description]
+#
+#         data = [dict(zip(columns, row)) for row in rows]
+#         return Response(data, status=status.HTTP_200_OK)
+#
+
+def get_model_enum_values(model, field):
+    return list(
+        model.objects.values_list(field, flat=True)
+        .distinct()
+        # .exclude(**{f"{field}__isnull": True})
+        .order_by(field)
     )
-    def get(self, request, *args, **kwargs):
+
+
+class RainfallPivotDailyAPIView(APIView):
+    def get_queryset(self, request):
+        qs = RainfallPivotDaily.objects.all()
         climate_scenario = request.query_params.get('climate_scenario')
         year_measured = request.query_params.get('year_measured')
         station_code = request.query_params.get('station_code')
 
-        # Step 1: Get station codes
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT DISTINCT station_code
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY station_code
-            """, [climate_scenario, year_measured, station_code, station_code])
-            station_codes = [row[0] for row in cursor.fetchall()]
-
-        if not station_codes:
-            return Response({"detail": "No data available for the specified filters."},
-                            status=status.HTTP_404_NOT_FOUND)
-
-        # Step 2: Build dynamic SQL for crosstab
-        column_list = ", ".join([f'"{code}" float' for code in station_codes])
-        crosstab_columns = ", ".join([f'"{code}"' for code in station_codes])
-
-        crosstab_query = f"""
-            SELECT month_measured, {crosstab_columns}
-            FROM crosstab(
-                $$
-                SELECT month_measured, station_code, rainfall_max
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY month_measured, station_code
-                $$,
-                $$
-                SELECT DISTINCT station_code
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY station_code
-                $$
-            ) AS pivot_table (
-                month_measured int,
-                {column_list}
-            );
-        """
-
-        # Step 3: Execute the pivot query
-        with connection.cursor() as cursor:
-            cursor.execute(crosstab_query, [
-                climate_scenario, year_measured, station_code, station_code,
-                climate_scenario, year_measured, station_code, station_code
-            ])
-            rows = cursor.fetchall()
-
-        if not rows:
-            return Response({"detail": "No data found for the specified filters."}, status=status.HTTP_404_NOT_FOUND)
-
-        # Step 4: Structure results to match serializer
-        data = []
-        for row in rows:
-            month = row[0]
-            # values = {station: f"{row[i+1]:.2f}" if row[i+1] is not None else None for i, station in enumerate(station_codes)}
-            values = {station: f"{row[i + 1]:.2f}" if row[i + 1] is not None else None for i, station in
-                      enumerate(station_codes)}
-
-            data.append({
-                'month_measured': month,
-                'stations': values
-            })
-
-        serializer = RainfallPivotSerializer(data=data, many=True)
-        if serializer.is_valid():
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class RainfallMonthlyPivotView3(APIView):
+        if climate_scenario:
+            qs = qs.filter(climate_scenario__icontains=climate_scenario)
+        if year_measured:
+            qs = qs.filter(year_measured=year_measured)
+        if station_code:
+            qs = qs.filter(station_code__icontains=station_code)
+        return qs
 
     @extend_schema(
-        description="Get a dynamic pivot table of rainfall data.",
-        responses={200: RainfallPivotSerializer(many=True)},
+        summary="Get daily rainfall pivot data",
         parameters=[
-            OpenApiParameter(name='climate_scenario', description='Climate scenario filter', required=True, type=str),
-            OpenApiParameter(name='year_measured', description='Year measured filter', required=True, type=int),
-            OpenApiParameter(name='station_code', description='Station code filter (optional)', required=False,
-                             type=str)
-        ]
-    )
-    def get(self, request, *args, **kwargs):
-        climate_scenario = request.query_params.get('climate_scenario')
-        year_measured = request.query_params.get('year_measured')
-        station_code = request.query_params.get('station_code')
-
-        # Step 1: Get station codes
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT DISTINCT station_code
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY station_code
-            """, [climate_scenario, year_measured, station_code, station_code])
-            station_codes = [row[0] for row in cursor.fetchall()]
-
-        if not station_codes:
-            return Response({"detail": "No data available for the specified filters."},
-                            status=status.HTTP_404_NOT_FOUND)
-
-        # Step 2: Build dynamic SQL for crosstab
-        column_list = ", ".join([f'"{code}" float' for code in station_codes])
-        crosstab_columns = ", ".join([f'"{code}"' for code in station_codes])
-
-        crosstab_query = f"""
-            SELECT month_name, {crosstab_columns}
-            FROM crosstab(
-                $$
-                SELECT month_name, station_code, rainfall_max
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY month_name, station_code
-                $$,
-                $$
-                SELECT DISTINCT station_code
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY station_code
-                $$
-            ) AS pivot_table (
-                month_name character varying(25),
-                {column_list}
-            );
-        """
-
-        # Step 3: Execute the pivot query
-        with connection.cursor() as cursor:
-            cursor.execute(crosstab_query, [
-                climate_scenario, year_measured, station_code, station_code,
-                climate_scenario, year_measured, station_code, station_code
-            ])
-            rows = cursor.fetchall()
-
-        if not rows:
-            return Response({"detail": "No data found for the specified filters."}, status=status.HTTP_404_NOT_FOUND)
-
-        # Step 4: Structure results to match serializer
-        data = []
-        for row in rows:
-            month = row[0]
-            # values = {station: f"{row[i+1]:.2f}" if row[i+1] is not None else None for i, station in enumerate(station_codes)}
-            values = {station: f"{row[i + 1]:.2f}" if row[i + 1] is not None else None for i, station in
-                      enumerate(station_codes)}
-
-            data.append({
-                'month_name': month,
-                'stations': values
-            })
-
-        serializer = RainfallPivotSerializer(data=data, many=True)
-        if serializer.is_valid():
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class RainfallMonthlyPivotView4(APIView):
-
-    @extend_schema(
-        description="Get a dynamic pivot table of rainfall data, grouped by month_name.",
-        responses={200: RainfallPivotSerializer(many=True)},
-        parameters=[
-            OpenApiParameter(name='climate_scenario', description='Climate scenario filter', required=True, type=str),
-            OpenApiParameter(name='year_measured', description='Year measured filter', required=True, type=int),
-            OpenApiParameter(name='station_code', description='Station code filter (optional)', required=False,
-                             type=str)
-        ]
-    )
-    def get(self, request, *args, **kwargs):
-        climate_scenario = request.query_params.get('climate_scenario')
-        year_measured = request.query_params.get('year_measured')
-        station_code = request.query_params.get('station_code')
-
-        # Step 1: Get station codes
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT DISTINCT station_code
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY station_code
-            """, [climate_scenario, year_measured, station_code, station_code])
-            station_codes = [row[0] for row in cursor.fetchall()]
-
-        if not station_codes:
-            return Response({"detail": "No data available for the specified filters."},
-                            status=status.HTTP_404_NOT_FOUND)
-
-        # Step 2: Build dynamic SQL for crosstab using month_name
-        column_list = ", ".join([f'"{code}" float' for code in station_codes])
-        crosstab_columns = ", ".join([f'"{code}"' for code in station_codes])
-
-        crosstab_query = f"""
-            SELECT month_name, {crosstab_columns}
-            FROM crosstab(
-                $$
-                SELECT month_name, station_code, ROUND(rainfall_max::numeric, 2)
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY month_name, station_code
-                $$,
-                $$
-                SELECT DISTINCT station_code
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY station_code
-                $$
-            ) AS pivot_table (
-                month_name character varying(25),
-                {column_list}
-            );
-        """
-
-        # Step 3: Execute the pivot query
-        with connection.cursor() as cursor:
-            cursor.execute(crosstab_query, [
-                climate_scenario, year_measured, station_code, station_code,
-                climate_scenario, year_measured, station_code, station_code
-            ])
-            rows = cursor.fetchall()
-
-        if not rows:
-            return Response({"detail": "No data found for the specified filters."}, status=status.HTTP_404_NOT_FOUND)
-
-        # Step 4: Structure and sort results by month order
-        month_order = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-
-        data = []
-        for row in rows:
-            month = row[0]
-            values = {station: row[i + 1] for i, station in enumerate(station_codes)}
-            data.append({
-                'month_name': month,
-                'stations': values
-            })
-
-        # Sort by logical calendar order
-        data.sort(key=lambda x: month_order.index(x['month_name']))
-
-        # Step 5: Serialize and return
-        serializer = RainfallPivotSerializer(data=data, many=True)
-        if serializer.is_valid():
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class RainfallMonthlyPivotView5(APIView):
-    def get(self, request, *args, **kwargs):
-        # Extract query parameters
-        climate_scenario = request.query_params.get('climate_scenario')
-        year_measured = request.query_params.get('year_measured')
-        station_code = request.query_params.get('station_code')
-
-        # Step 1: Get unique station codes
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT DISTINCT station_code
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY station_code
-            """, [climate_scenario, year_measured, station_code, station_code])
-            station_codes = [row[0] for row in cursor.fetchall()]
-
-        if not station_codes:
-            return Response({"detail": "No data available for the specified filters."},
-                            status=status.HTTP_404_NOT_FOUND)
-
-        # Step 2: Get monthly rainfall data per station and month
-        station_month_data = []
-
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT station_code, month_name, COALESCE(SUM(rainfall_max), 0) AS total_rainfall
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                GROUP BY station_code, month_name
-                ORDER BY station_code, month_name
-            """, [climate_scenario, year_measured, station_code, station_code])
-
-            # Process data into row format for each station
-            rows = cursor.fetchall()
-            for row in rows:
-                station_code, month_name, total_rainfall = row
-                if not any(station['station_code'] == station_code for station in station_month_data):
-                    # Add a new station row
-                    station_month_data.append({
-                        'station_code': station_code,
-                        'months': {}  # Initialize months as an empty dictionary
-                    })
-                # Find the station and update the month with rainfall data
-                for station in station_month_data:
-                    if station['station_code'] == station_code:
-                        station['months'][month_name] = float(f"{total_rainfall:.2f}")
-
-        print(station_month_data)
-        # Step 3: Serialize and return the data
-        serializer = StationMonthlyPivotSerializer(station_month_data, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-class RainfallMonthlyPivotView(GenericAPIView):
-    serializer_class = StationMonthlyPivotSerializer()
-    def get(self, request, *args, **kwargs):
-        # Extract query parameters
-        climate_scenario = request.query_params.get('climate_scenario')
-        year_measured = request.query_params.get('year_measured')
-        station_code = request.query_params.get('station_code')
-
-        # Step 1: Get unique station codes
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT DISTINCT station_code
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY station_code
-            """, [climate_scenario, year_measured, station_code, station_code])
-            station_codes = [row[0] for row in cursor.fetchall()]
-
-        if not station_codes:
-            return Response({"detail": "No data available for the specified filters."},
-                            status=status.HTTP_404_NOT_FOUND)
-
-        # Step 2: Get monthly rainfall data per station and month
-        months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-        station_month_data = []
-
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT station_code, month_name, COALESCE(SUM(rainfall_max), 0) AS total_rainfall
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                GROUP BY station_code, month_name
-                ORDER BY station_code, month_name
-            """, [climate_scenario, year_measured, station_code, station_code])
-
-            # Process data into row format for each station
-            rows = cursor.fetchall()
-            for row in rows:
-                station_code, month_name, total_rainfall = row
-                # Ensure each station entry exists
-                station = next((s for s in station_month_data if s['station_code'] == station_code), None)
-                if not station:
-                    # Create a new station entry with all months initialized to None
-                    station = {
-                        'station_code': station_code,
-                        'months': {month: None for month in months}
-                    }
-                    station_month_data.append(station)
-
-
-                # Update the correct month with rainfall data
-                station['months'][month_name] = float(f"{total_rainfall:.2f}")
-
-        print(station_month_data)
-        # Step 3: Serialize and return the data
-        serializer = StationMonthlyPivotSerializer(station_month_data, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-class RainfallStationMonthlyPivot(APIView):
-
-    @extend_schema(
-        description="Get a pivot table with stations as rows and months as columns.",
-        responses={200: StationMonthlyPivotSerializer(many=True)},
-        parameters=[
-            OpenApiParameter(name='climate_scenario', description='Climate scenario filter', required=True, type=str),
-            OpenApiParameter(name='year_measured', description='Year measured filter', required=True, type=int),
-            OpenApiParameter(name='station_code', description='Station code filter (optional)', required=False, type=str)
-        ]
-    )
-    def get(self, request, *args, **kwargs):
-        climate_scenario = request.query_params.get('climate_scenario')
-        year_measured = request.query_params.get('year_measured')
-        station_code = request.query_params.get('station_code')
-
-        # Step 1: Manually define logical month order
-        logical_months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-                          'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
-
-        # Step 2: Filter only the months that exist in the dataset
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT DISTINCT month_name
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-            """, [climate_scenario, year_measured, station_code, station_code])
-            available_months = {row[0] for row in cursor.fetchall()}
-
-        # Step 3: Final ordered list of months based on logical order
-        month_names = [m for m in logical_months if m in available_months]
-
-        if not month_names:
-            return Response({"detail": "No data available for the specified filters."},
-                            status=status.HTTP_200_OK)
-
-        # Step 4: Build dynamic SQL for crosstab
-        column_list = ", ".join([f'"{month}" float' for month in month_names])
-        crosstab_columns = ", ".join([f'"{month}"' for month in month_names])
-
-        crosstab_query = f"""
-            SELECT station_code, {crosstab_columns}
-            FROM crosstab(
-                $$
-                SELECT station_code, month_name, rainfall_max
-                FROM rainfall
-                WHERE climate_scenario = %s AND year_measured = %s
-                AND (%s IS NULL OR station_code = %s)
-                ORDER BY station_code, 
-                         CASE month_name 
-                             {' '.join([f"WHEN '{m}' THEN {i+1}" for i, m in enumerate(logical_months)])}
-                             ELSE 999 
-                         END
-                $$,
-                $$
-                SELECT unnest(ARRAY[{', '.join([f"'{m}'" for m in month_names])}])
-                $$
-            ) AS pivot_table (
-                station_code character varying(25),
-                {column_list}
-            );
-        """
-
-        # Step 5: Execute the pivot query
-        with connection.cursor() as cursor:
-            cursor.execute(crosstab_query, [
-                climate_scenario, year_measured, station_code, station_code
-            ])
-            rows = cursor.fetchall()
-
-        if not rows:
-            return Response({"detail": "No data found for the specified filters."},
-                            status=status.HTTP_404_NOT_FOUND)
-
-        # Step 6: Structure results
-        data = []
-        for row in rows:
-            station = row[0]
-            values = {
-                month: f"{row[i + 1]:.2f}" if row[i + 1] is not None else None
-                for i, month in enumerate(month_names)
-            }
-            data.append({
-                'station_code': station,
-                'months': values
-            })
-
-        return Response(data, status=status.HTTP_200_OK)
-
-class ExportRainfallExcelView(APIView):
-    @extend_schema(
-        parameters=[
-            OpenApiParameter(name='climate_scenario', type=str, required=False, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='year_measured', type=int, required=False, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='station', type=str, required=False, location=OpenApiParameter.QUERY),
+            OpenApiParameter(
+                name="climate_scenario",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                enum=get_model_enum_values(ClimateScenario, 'climate_scenario'),
+                required=False
+            ),
+            OpenApiParameter(
+                name="year_measured",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                enum=get_model_enum_values(Rainfall, 'year_measured'),
+                required=False
+            ),
+            OpenApiParameter(
+                name="station_code",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                enum=get_model_enum_values(Station, 'code'),
+                required=False
+            ),
         ],
-        responses={200: OpenApiTypes.OBJECT}
+        responses={200: RainfallPivotDailySerializer(many=True)}
     )
     def get(self, request):
-        qs = Rainfall.objects.all().values()
-        df = pd.DataFrame(qs)
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename=rainfall.xlsx'
-        df.to_excel(response, index=False)
-        return response
+        queryset = self.get_queryset(request)
+        serializer = RainfallPivotDailySerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class ExportRainfallPDFView(APIView):
+class RainfallPivotMonthlyAPIView(APIView):
+    def get_queryset(self, request):
+        qs = RainfallPivotMonthly.objects.all()
+        climate_scenario = request.query_params.get('climate_scenario')
+        year_measured = request.query_params.get('year_measured')
+        station_code = request.query_params.get('station_code')
+
+        if climate_scenario:
+            qs = qs.filter(climate_scenario=climate_scenario)
+        if year_measured:
+            qs = qs.filter(year_measured=year_measured)
+        if station_code:
+            qs = qs.filter(station_code=station_code)
+        return qs
+
     @extend_schema(
+        summary="Get monthly rainfall pivot data",
         parameters=[
-            OpenApiParameter(name='climate_scenario', type=str, required=False, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='year_measured', type=int, required=False, location=OpenApiParameter.QUERY),
-            OpenApiParameter(name='station', type=str, required=False, location=OpenApiParameter.QUERY),
+            OpenApiParameter(
+                name="climate_scenario",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                enum=get_model_enum_values(ClimateScenario, 'name'),
+                required=False
+            ),
+            OpenApiParameter(
+                name="year_measured",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                enum=get_model_enum_values(Rainfall, 'year_measured'),
+                required=False
+            ),
+            OpenApiParameter(
+                name="station_code",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                enum=get_model_enum_values(Station, 'code'),
+                required=False
+            ),
         ],
-        responses={200: OpenApiTypes.OBJECT}
+        responses={200: RainfallPivotMonthlySerializer(many=True)}
     )
     def get(self, request):
-        buffer = io.BytesIO()
-        p = canvas.Canvas(buffer)
-        p.drawString(100, 800, "Rainfall Report")
-        p.showPage()
-        p.save()
-        buffer.seek(0)
-        return HttpResponse(buffer, content_type='application/pdf')
+        queryset = self.get_queryset(request)
+        serializer = RainfallPivotMonthlySerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

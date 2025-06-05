@@ -1,0 +1,124 @@
+<li class="{{ general }}" title="General Settings">
+    <a href="{% url 'global_setup:defaults:index' request.defaults.pk %}"><i class="sidebar-item-icon ti ti-layout-grid2"></i>
+        <span class="nav-label">Default Settings</span>
+    </a>
+</li>
+
+<li class="{{ revenue }}" title="Setup">
+    <a href="javascript:;"><i class="sidebar-item-icon ti ti-settings"></i>
+        <span class="nav-label">Revenue</span><i class="fa fa-angle-right arrow"></i>
+    </a>
+    <ul class="nav-2-level collapse">
+        <li>
+            <a href="{% url 'global_setup:revenue:bank_accounts' %}">Bank Accounts</a>
+        </li>
+        <li>
+            <a href="{% url 'global_setup:revenue:projects' %}">Projects</a>
+        </li>
+        <li>
+            <a href="{% url 'global_setup:revenue:gepg' %}">GePG</a>
+        </li>
+    </ul>
+</li>
+<li class="{{ expenditure }}" title="Setup">
+    <a href="javascript;"><i class="sidebar-item-icon ti-settings"></i>
+        <span class="nav-label">Expenditure</span><i class="fa fa-angle-right arrow"></i>
+    </a>
+    <ul class="nav-2-level collapse">
+        <li>
+            <a href="{% url 'global_setup:expenditure:projects' %}" class="{{ project_activities }}">Project Activities</a>
+            <a href="{% url 'global_setup:expenditure:whtax' %}" class="{{ whtax }}">Withholding Tax Rate</a>
+            <a href="{% url 'global_setup:expenditure:impresttype' %}" class="{{ impresttype }}">Imprest Type</a>
+            <a href="{% url 'global_setup:expenditure:non_budgetary_codes' %}" class="{{ non_budgetary_codes }}">Non Budgetary Codes</a>
+            <a href="{% url 'global_setup:expenditure:town' %}" class="{{ town }}">Towns</a>
+            <a href="{% url 'global_setup:expenditure:travelroute' %}" class="{{ travelroute }}">Travel Routes</a>
+            {% comment %} <a href="{% url 'global_setup:expenditure:requestitemref' %}" class="{{ paymentrqstitemref }}">Payment Request Items</a> {% endcomment %}
+            <a href="{% url 'global_setup:expenditure:accountantrole' %}" class="{{ accountantrole }}">Assign Accountants Role</a>
+        </li>
+    </ul>
+</li>
+<li class="{{ final_accounts }}" title="Setup">
+    <a href="javascript:;"><i class="sidebar-item-icon ti-settings"></i>
+        <span class="nav-label">Final Accounts</span><i class="fa fa-angle-right arrow"></i></a>
+    <ul class="nav-2-level collapse">
+        <li class="{{ account_setup }}">
+            <a href="javascript:;">
+                <span class="nav-label">Accounts</span><i class="fa fa-angle-right arrow"></i></a>
+            <ul class="nav-3-level collapse">
+                <li>
+                    <a href="{% url 'global_setup:final_accounts:codes_standards_setup' %}" class="{{ codes_setup }}">General</a>
+                </li>
+                <li>
+                    <a href="{% url 'global_setup:final_accounts:account_setup' %}" class="{{ chart_setup }}">Charts Level</a>
+                </li>
+            </ul>
+        </li>
+        <li>
+            <a href="{% url 'global_setup:final_accounts:admin_centre_setup' %}" class="{{ admin_centre }}">Admin Centre</a>
+        </li>
+        <li>
+            <a href="{% url 'global_setup:final_accounts:asset_setup' %}" class="{{ asset }}">Asset</a>
+        </li>
+        <li>
+            <a href="{% url 'global_setup:final_accounts:cash_flow_setup' %}" class="{{ cash_flow }}">Cash Flow</a>
+        </li>
+        <li>
+            <a href="{% url 'global_setup:final_accounts:company_setup' %}" class="{{ company_setup }}">Company</a>
+        </li>
+        <li>
+            <a href="{% url 'global_setup:final_accounts:exchangerate_setup' %}" class="{{ exchange_setup }}">Exchange Rate</a>
+        </li>
+        <li>
+            <a href="{% url 'global_setup:final_accounts:invdebtor_setup' %}" class="{{ debtor_invoice }}">Invoice & Debtor</a>
+        </li>
+    </ul>
+</li>
+
+<li class="{{ budget }}" title="Setup">
+    <a href="#"><i class="sidebar-item-icon ti-settings"></i>
+        <span class="nav-label">Budget</span><i class="fa fa-angle-right arrow"></i>
+    </a>
+    <ul class="nav-2-level collapse">
+        <li>
+            <a href="{% url 'global_setup:budget:financial_years' %}" class="{{ finyear }}">Financial Year</a>
+            <a href="{% url 'global_setup:budget:currencies' %}" class="{{ currency }}">Currency</a>
+            <a href="{% url 'global_setup:budget:funds_sources' %}" class="{{ fundsource }}">Source of Funds</a>
+            <a href="{% url 'global_setup:budget:divisions' %}" class="{{ divisions }}">Divisions</a>
+            <a href="{% url 'global_setup:budget:costcentres_view' %}" class="{{ costcentres }}">Cost Centres</a>
+            <a href="{% url 'global_setup:budget:funds_categories' %}" class="{{ fundscategory }}">Fund Categories</a>
+            <a href="{% url 'global_setup:budget:fundscentre' %}" class="{{ fundscentre }}">Source of Funds Cost Centres</a>
+            <a href="{% url 'global_setup:budget:bgtceiling' %}" class="{{ bgtceiling }}">Budget Ceiling</a>
+            <a href="{% url 'global_setup:budget:objectives' %}" class="{{ objectives }}">Objectives</a>
+            <a href="{% url 'global_setup:budget:targets' %}" class="{{ targets }}">Targets</a>
+            <a href="{% url 'global_setup:budget:activities' %}" class="{{ activities }}">Activities</a>
+            <a href="{% url 'global_setup:budget:gfscode' %}" class="{{ gfscode }}">GFS Code</a>
+            <a href="{% url 'global_setup:budget:unit_of_measure' %}" class="{{ uom }}">Unit of Measure</a>
+            <a href="{% url 'global_setup:budget:transref' %}" class="{{ transref }}">Account Codes</a>
+            <a href="{% url 'global_setup:budget:expenditure_codes' %}" class="{{ expcode }}">Activities Exp Code</a>
+            <a href="{% url 'global_setup:budget:period_balance' %}" class="{{ period }}">Period Opening Balance</a>
+            <a href="{% url 'global_setup:budget:overdraft' %}" class="{{ overdraft }}">Overdraft</a>
+            <a href="{% url 'global_setup:budget:chart_of_account' %}" class="{{ chart }}">Chart of Accounts</a>
+        </li>
+    </ul>
+</li>
+
+<li class="{{ payroll }}" title="Payroll">
+    <a href="{% url 'global_setup:payroll:setup' %}" class="{{ payroll }}">
+        <i class="sidebar-item-icon ti-settings"></i><span class="nav-label">Payroll</span>
+    </a>
+</li>
+<li class="{{ fixed_assets }}" title="Setup">
+    <a href="{% url 'global_setup:fixed_assets:index' %}"><i class="sidebar-item-icon ti ti-settings"></i>
+        Fixed Assets
+    </a>
+</li>
+<li class="{{ pmis_setup }}" title="Property and Lease">
+    <a href="{% url 'global_setup:pmis:index' %}"><i class="sidebar-item-icon ti ti-layout-cta-left"></i>
+        Property and Lease
+    </a>
+</li>
+<li class="{{ project_setup }}" title="Project Management">
+    <a href="{% url 'global_setup:project:index' %}"><i class="sidebar-item-icon ti ti-layout-grid2"></i>
+        Project Management
+    </a>
+</li>

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+    <div class="content-header row">
+        <div class="col-md-12">
+            <nav class="breadcrumb-nav" aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    {% block breadcramb %}{% endblock %}
+                </ol>
+            </nav>
+            <div class="ibox-head flex-row-reverse">
+                <ul class="nav nav-tabs tabs-line" role="tablist">
+                    {% block inner-navbar %}{% endblock %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="content-body">
+        <div class="ibox">
+            <div class="ibox-body">
+                <div class="tab-content">
+                    {% block inner-content %}
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

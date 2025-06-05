@@ -25,6 +25,7 @@ INSTALLED_APPS = [
 # Project Apps
 INSTALLED_APPS += [
     'api',
+    'core',
 ]
 
 # Third party
@@ -34,6 +35,8 @@ INSTALLED_APPS += [
     'drf_spectacular',
     'drf_spectacular_sidecar',
     'django_filters',
+    'crispy_forms',
+
 ]
 
 
@@ -56,10 +59,11 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],  # optional for global templates
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -95,11 +99,20 @@ USE_L10N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+STATICFILES_DIR = [os.path.join(BASE_DIR, 'static')]  # For your project-level static folder
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')    # Used when you run collectstatic
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # 'DEFAULT_FILTER_BACKENDS': [
+    #     'django_filters.rest_framework.DjangoFilterBackend',
+    #     'rest_framework.filters.OrderingFilter'
+    # ],
+    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    # 'PAGE_SIZE': 50,
 }
 
 SPECTACULAR_SETTINGS = {

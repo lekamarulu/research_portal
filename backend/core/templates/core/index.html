@@ -1,0 +1,446 @@
+{% extends "base_child.html" %}
+{% load static %}
+
+{% load crispy_forms_tags %}
+
+{% block side_menu %}
+    {% include "core/side_menu.html" %}
+{% endblock %}
+
+{% block styles %}
+    <link href="{% static 'css/datatables/custom.css' %}" rel="stylesheet"/>
+{% endblock %}
+
+{% block breadcramb %}
+    <li class="breadcrumb-item">
+        <a href=""><i class="ti ti-layout-grid2"></i></a>
+    </li>
+    <li class="breadcrumb-item">
+        {{ module }}
+    </li>
+    <li class="breadcrumb-item">
+        {{ sub_module }}
+    </li>
+{% endblock %}
+{% block inner-navbar %}
+
+
+    <li class="table-nav nav-item">
+        <a class="nav-link" href="#stations" data-toggle="tab">Permit Authorities</a>
+    </li>
+
+{% endblock %}
+{% block inner-content %}
+
+    <div class="tab-pane fade show active" id="stations">
+        <div id="stations-list" class="table-responsive">
+            <div id="stations-content" class="ajax-loader">
+                {% include 'core/list.html' %}
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+{{ scripts.super }}
+
+{% block scripts %}
+    <script>
+        $(document).ready(function () {
+
+            $(".datepicker").datepicker({
+                autoclose: true
+            });
+
+            $("a[data-toggle='tab']").on("show.bs.tab", function (e) {
+                localStorage.setItem("activeTab", $(e.target).attr("href"));
+            });
+            var activeTab = localStorage.getItem("activeTab");
+            if (activeTab) {
+                var navTab = $(".nav-tabs a[href='" + activeTab + "']");
+                navTab.tab("show");
+            }
+
+            $(".nav-tabs a").on("show.bs.tab", function (e) {
+                var activeTab = $(e.target);
+                var prevTab = $(e.relatedTarget);
+                $(prevTab.attr("href")).removeClass("active");
+                localStorage.setItem("activeTab", activeTab.attr("href"));
+
+                $(".breadcrumb li").last().remove(".active");
+                $(".breadcrumb").append("<li class=\"breadcrumb-item active\">" + activeTab.text() + "</li>");
+
+            });
+
+            //stations
+            $(function () {
+                const stations_table = $("#stations-table").DataTable({
+                    pageLength: 15,
+                    fixedHeader: false,
+                    responsive: false,
+                    autoWidth: false,
+                    dom: "<'d-flex mb-1'<'#stations-table-length.mr-1'><'#stations-table-search.mr-auto'><'#stations-table-buttons'B><'#stations-action-buttons.ml-3'>>" +
+                        "<'d-flex'tr>" +
+                        "<'d-flex justify-content-between'ip>",
+                    buttons: [
+                        {extend: 'copy', className: 'btn btn-blue'},
+                        {extend: 'csv', className: 'btn btn-blue'},
+                        {extend: 'excel', className: 'btn btn-blue'},
+                        {
+                            extend: 'print',
+                            className: 'btn btn-blue',
+                            title: "Permit Agents",
+                            exportOptions: {
+                                columns: [1, 2, 3, 4, 5]
+                            },
+                        }
+                    ],  // To retain select picker on table drawing
+                    drawCallback: function (settings) {
+                        $('.select-picker').selectpicker();
+                    },
+                    processing: false,
+                    serverSide: true,
+                    columnDefs: [
+                        {
+                            name: 'autoref',
+                            orderable: true,
+                            searchable: true,
+                            targets: [0],
+                            visible: false
+                        },
+                        {
+                            name: 'agentid',
+                            orderable: true,
+                            searchable: true,
+                            targets: [1],
+                            visible: false
+                        },
+                        {
+                            name: 'agentname',
+                            orderable: true,
+                            searchable: true,
+                            targets: [2],
+                            width: '30%'
+                        },
+                        {
+                            name: 'physicaladdress',
+                            orderable: true,
+                            searchable: true,
+                            targets: [3],
+                            width: '18%'
+                        },
+                        {
+                            name: 'phones',
+                            orderable: true,
+                            searchable: true,
+                            targets: [4],
+                            width: '12%'
+                        },
+                        {
+                            name: 'email',
+                            orderable: true,
+                            searchable: true,
+                            targets: [5],
+                            width: '15%'
+                        },
+                        {
+                            name: 'authoritytype',
+                            orderable: true,
+                            searchable: true,
+                            targets: [6],
+                            width: '15%'
+                        },
+                        {
+                            name: 'options',
+                            orderable: true,
+                            searchable: true,
+                            targets: [7],
+                            className: "align-center",
+                            width: '5%',
+                            render: function (data, type, row) {
+                                return '' +
+                                    {#'<button class="font-11 btn btn-sm btn-outline-blue btn-station-view" title="View" station-id="' + row[0] + '"><i class="ti-eye"></i></button>\n' +#}
+                                    '<button class="font-11 btn btn-sm btn-outline-blue btn-station-edit" title="Edit" station-id="' + row[0] + '"><i class="ti-pencil"></i></button>\n' +
+                                    '<button class="font-11 btn btn-sm btn-outline-danger btn-station-delete" title="Delete" station-id="' + row[0] + '"><i class="ti-trash"></i></button>';
+                            },
+                        }
+                    ],
+                    ajax: {
+                        url: "{% url 'global_setup:project:stations_list_json' %}",
+                    }
+                });
+
+
+                {#search matches#}
+                $("#stations-table-search").html('' +
+                    '<div class="input-group-icon input-group-icon-left mr-3">\n' +
+                    '   <span class="input-icon input-icon-right font-16"><i class="ti-search"></i></span>\n' +
+                    '   <input class="form-control" id="stations-key-search"\n' +
+                    '       type="text" placeholder="Search...">\n' +
+                    '</div>');
+
+                $("#stations-key-search").on("keyup", function () {
+                    stations_table.search(this.value).draw();
+                });
+
+
+                $("#stations-table-length").html('' +
+                    '<select class="select2 form-control" id="stations-length" data-style="btn-solid" data-width="100px">' +
+                    '<option value="10">10</option>' +
+                    '<option value="15" selected>15</option>' +
+                    '<option value="20">20</option>' +
+                    '<option value="30">30</option>' +
+                    '<option value="50">50</option>' +
+                    '<option value="-1">All</option>' +
+                    '</select>');
+                $("#stations-length").on("change", function () {
+                    stations_table.page.len(this.value).draw();
+                });
+                $("#stations-action-buttons").html('' +
+                    '<button id="btn-station-new" class="btn btn-outline-blue">\n' +
+                    '   <span class="btn-icon"><i class="fa fa-plus"></i>Add Permit Authority</span>\n' +
+                    '</button>'
+                );
+
+
+                $("#btn-station-new").on("click", function () {
+                    $.get("{% url 'global_setup:project:station_create' %}", "", function (resp) {
+                        $("#stations-table_wrapper").hide();
+                        $("#stations-content").append(resp)
+                    });
+                });
+
+
+                $(document).on("click", "#btn-station-save", function () {
+                    const form = $("#station-create-form");
+
+                    form.validate({
+                        ignore: ":hidden:not(.validate)",
+                        errorElement: 'span',
+                        errorClass: 'help-block',
+                        highlight: function (element, errorClass, validClass) {
+                            $(element).closest('.form-group').addClass("has-error");
+                        },
+                        unhighlight: function (element, errorClass, validClass) {
+                            $(element).closest('.form-group').removeClass("has-error");
+                        },
+                        rules: {
+                            agentid: {
+                                required: true,
+                            },
+                            agentname: {
+                                required: true,
+                            },
+                        },
+                    });
+
+                    if (form.valid() === true) {
+                        const formData = form.serializeArray();
+                        const url = form.attr("action");
+                        $.ajax({
+                            type: "POST",
+                            url: url,
+                            data: formData,
+                            success: function (response) {
+                                if (response.success) {
+                                    $("#create-form").remove();
+                                    $("#stations-table_wrapper").show();
+                                    stations_table.ajax.reload();
+                                    $(".table-nav").closest(".nav-tabs").parent().show();
+                                    toastr.success(response.success);
+                                    //$("#stations-table_wrapper").hide();
+                                    //$("#stations-content").append(resp)
+                                } else if (response.error) {
+                                    toastr.error(response.error);
+                                }
+                            },
+
+                        });
+                    }
+                });
+                $(document).on('click', '.btn-station-view', function () {
+                    var station = $(this).closest('tr').find('td:eq(0)').text();
+                    var url = "global_setup/project/station/detail/" + station;
+                    $.get(url, "", function (resp) {
+                        $("#stations-table_wrapper").hide();
+                        $("#stations-content").append(resp)
+                    })
+                });
+                $(document).on('click', '.btn-station-edit', function () {
+                    var station = $(this).closest('tr').find('td:eq(0)').text();
+                    var station_id = $(this).attr('station-id');
+                    var url = "/global_setup/project/station/update/" + station_id;
+
+                    $.get(url, "", function (resp) {
+                        $("#stations-table_wrapper").hide();
+                        $("#stations-content").append(resp)
+                    })
+                });
+                $(document).on("click", '.btn-update-close', function () {
+                    $("#station-details").remove();
+                    $("#stations-table_wrapper").show();
+                    stations_table.draw();
+                });
+                $(document).on("click", '.btn-station-delete', function () {
+                    var station = $(this).closest('tr').find('td:eq(1)').text();
+                    var station_id = $(this).attr('station-id');
+
+                    var url = "/global_setup/project/station/delete/" + station_id;
+                    swal({
+                        title: "Are you sure?",
+                        text: "You are about to delete " + station + " Permit Agent",
+                        type: 'warning',
+                        showCancelButton: true,
+                        cancelButtonClass: 'btn-blue',
+                        cancelButtonText: 'No',
+                        confirmButtonClass: 'btn-danger',
+                        confirmButtonText: 'Yes',
+                        closeOnConfirm: true,
+                        closeOnCancel: true,
+                        closeOnClickOutside: false,
+                        allowEscapeKey: false,
+                        allowEnterKey: false,
+                        reverseButtons: false
+                    }, function (isConfirm) {
+                        if (isConfirm) {
+                            $.get(url, "", function (response) {
+                                if (response.success) {
+                                    stations_table.ajax.reload();
+                                    toastr.success(response.success);
+                                } else if (response.error) {
+                                    toastr.error(response.error);
+                                }
+                            });
+                        }
+                    });
+                });
+                $(document).on("click", '#btn-station-update', function () {
+                    const form = $("#station-update-form");
+                    form.validate({
+                        ignore: ":hidden:not(.validate)",
+                        errorElement: 'span',
+                        errorClass: 'help-block',
+                        highlight: function (element, errorClass, validClass) {
+                            $(element).closest('.form-group').addClass("has-error");
+                        },
+                        unhighlight: function (element, errorClass, validClass) {
+                            $(element).closest('.form-group').removeClass("has-error");
+                        },
+                        rules: {
+                            agentid: {
+                                required: true,
+                            },
+                            agentname: {
+                                required: true,
+                            },
+                        },
+                    });
+                    if (form.valid() === true) {
+                        var formData = form.serializeArray();
+                        const url = form.attr("action");
+                        $.ajax({
+                            type: "POST",
+                            url: url,
+                            data: formData,
+                            success: function (response) {
+                                if (response.success) {
+                                    $("#update-form").remove();
+                                    $("#stations-table_wrapper").show();
+                                    $(".table-nav").closest(".nav-tabs").parent().show();
+                                    stations_table.ajax.reload();
+                                    toastr.success(response.success);
+                                } else if (response.error) {
+                                    toastr.error(response.error);
+                                }
+                            },
+                        });
+                    }
+                });
+                $(document).on("click", '.btn-create-close', function () {
+                    $("#create-form").remove();
+                    $("#stations-table_wrapper").show();
+                    stations_table.ajax.reload();
+                    $(".table-nav").closest(".nav-tabs").parent().show();
+
+                });
+                $(document).on("click", '.btn-update-close', function () {
+                    $("#update-form").remove();
+                    $("#stations-table_wrapper").show();
+                    stations_table.ajax.reload();
+                    $(".table-nav").closest(".nav-tabs").parent().show();
+
+                });
+
+            });
+
+        });
+
+        $('#stationspecialization-location-filter').select2({
+            minimumResultsForSearch: 6
+        });
+
+        toastr.options = {
+            {#"closeButton": true,#}
+            {#"debug": false,#}
+            {#"newestOnTop": false,#}
+            {#"progressBar": true,#}
+            "positionClass": "toast-top-right",
+            "preventDuplicates": true,
+            "onclick": null,
+            "showDuration": 300, //do not work
+            "hideDuration": 300,//do not work
+            {#"timeOut": "5000",#}
+            {#"extendedTimeOut": "1000",#}
+            {#"showEasing": "swing",#}
+            {#"hideEasing": "linear",#}
+            {#"showMethod": "fadeIn",#}
+            {#"hideMethod": "fadeOut"#}
+        }
+
+        function addCommas(nStr) {
+            nStr += '';
+            x = nStr.split('.');
+            x1 = x[0];
+            x2 = x.length > 1 ? '.' + x[1] : '';
+            var rgx = /(\d+)(\d{3})/;
+            while (rgx.test(x1)) {
+                x1 = x1.replace(rgx, '$1' + ',' + '$2');
+            }
+            return x1 + x2;
+        }
+
+        function numbersonly(e, value, maxvalue) {
+            var unicode = e.charCode ? e.charCode : e.keyCode
+            if (unicode != 8 && unicode != 46 && unicode != 9 && unicode != 44) { //if the key isn't the backspace key (which we should allow)
+                if (unicode < 48 || unicode > 57 || value > maxvalue) //if not a number
+                    return false //disable key press
+            }
+        }
+
+        function updateTextView(_obj) {
+            var num = getNumber(_obj.val());
+            if (num == 0) {
+                _obj.val('');
+            } else {
+                _obj.val(num.toLocaleString());
+            }
+        }
+
+        function getNumber(_str) {
+            var arr = _str.split('');
+            var out = new Array();
+            for (var cnt = 0; cnt < arr.length; cnt++) {
+                if (isNaN(arr[cnt]) == false) {
+                    out.push(arr[cnt]);
+                }
+            }
+            return Number(out.join(''));
+        }
+
+        $(document).ready(function () {
+            $('.add_comma_separator').on('keyup', function () {
+                updateTextView($(this));
+            });
+        });
+
+    </script>
+{% endblock %}

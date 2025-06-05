@@ -1,0 +1,344 @@
+{% extends "core/base.html" %}
+{% block title %}Station Records{% endblock %}
+
+{% block extra_head %}
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- DataTables CSS for Bootstrap 5 -->
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+    <!-- jQuery (required by DataTables) -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="container mt-4">
+        <h2>Station Records</h2>
+        <a class="btn btn-primary mb-3" href="{% url 'station_create' %}">Add Station</a>
+
+        <table id="stations-table" class="table table-striped table-bordered" style="width:100%">
+            <thead>
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Longitude</th>
+                <th>Latitude</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            $(function () {
+                const stations_table = $("#stations-table").DataTable({
+                    pageLength: 15,
+                    fixedHeader: false,
+                    responsive: false,
+                    autoWidth: false,
+                    dom: "<'d-flex mb-1'<'#stations-table-length.mr-1'><'#stations-table-search.mr-auto'><'#stations-table-buttons'B><'#stations-action-buttons.ml-3'>>" +
+                        "<'d-flex'tr>" +
+                        "<'d-flex justify-content-between'ip>",
+                    buttons: [
+                        {extend: 'copy', className: 'btn btn-blue'},
+                        {extend: 'csv', className: 'btn btn-blue'},
+                        {extend: 'excel', className: 'btn btn-blue'},
+                        {
+                            extend: 'print',
+                            className: 'btn btn-blue',
+                            title: "Permit Agents",
+                            exportOptions: {
+                                columns: [1, 2, 3, 4, 5]
+                            },
+                        }
+                    ],  // To retain select picker on table drawing
+                    drawCallback: function (settings) {
+                        $('.select-picker').selectpicker();
+                    },
+                    processing: false,
+                    serverSide: true,
+                    columnDefs: [
+                        {
+                            name: 'code',
+                            orderable: true,
+                            searchable: true,
+                            targets: [0],
+                        },
+                        {
+                            name: 'name',
+                            orderable: true,
+                            searchable: true,
+                            targets: [1],
+                        },
+                        {
+                            name: 'longitude',
+                            orderable: true,
+                            searchable: true,
+                            targets: [2],
+                            //width: '30%'
+                        },
+                        {
+                            name: 'latitude',
+                            orderable: true,
+                            searchable: true,
+                            targets: [3],
+                            //width: '18%'
+                        },
+                        {
+                            name: 'status',
+                            orderable: true,
+                            searchable: true,
+                            targets: [4],
+                            //width: '12%'
+                        },
+                        {
+                            name: 'options',
+                            orderable: true,
+                            searchable: true,
+                            targets: [5],
+                            className: "align-center",
+                            //width: '5%',
+                            render: function (data, type, row) {
+                                return '' +
+                                    '<button class="font-11 btn btn-sm btn-outline-blue btn-station-edit" title="Edit" station-oode="' + row[0] + '"><i class="ti-pencil"></i></button>\n' +
+                                    '<button class="font-11 btn btn-sm btn-outline-danger btn-station-delete" title="Delete" station-oode="' + row[0] + '"><i class="ti-trash"></i></button>';
+                            },
+                        }
+                    ],
+                    ajax: {
+                        url: "{% url 'core:station_list_api' %}",
+                    }
+                });
+
+                {#search matches#}
+                $("#stations-table-search").html('' +
+                    '<div class="input-group-icon input-group-icon-left mr-3">\n' +
+                    '   <span class="input-icon input-icon-right font-16"><i class="ti-search"></i></span>\n' +
+                    '   <input class="form-control" id="stations-key-search"\n' +
+                    '       type="text" placeholder="Search...">\n' +
+                    '</div>');
+
+                $("#stations-key-search").on("keyup", function () {
+                    stations_table.search(this.value).draw();
+                });
+
+
+                $("#stations-table-length").html('' +
+                    '<select class="select2 form-control" id="stations-length" data-style="btn-solid" data-width="100px">' +
+                    '<option value="10">10</option>' +
+                    '<option value="15" selected>15</option>' +
+                    '<option value="20">20</option>' +
+                    '<option value="30">30</option>' +
+                    '<option value="50">50</option>' +
+                    '<option value="-1">All</option>' +
+                    '</select>');
+                $("#stations-length").on("change", function () {
+                    stations_table.page.len(this.value).draw();
+                });
+                $("#stations-action-buttons").html('' +
+                    '<button id="btn-station-new" class="btn btn-outline-blue">\n' +
+                    '   <span class="btn-icon"><i class="fa fa-plus"></i>Add Permit Authority</span>\n' +
+                    '</button>'
+                );
+
+
+                $("#btn-station-new").on("click", function () {
+                    //$.get("{ url 'core:station_create' %}", "", function (resp) {
+                    $.get("{% url 'core:station_create' %}", "", function (resp) {
+                        $("#stations-table_wrapper").hide();
+                        $("#stations-content").append(resp)
+                    });
+                });
+
+
+                $(document).on("click", "#btn-station-save", function () {
+                    const form = $("#station-create-form");
+
+                    form.validate({
+                        ignore: ":hidden:not(.validate)",
+                        errorElement: 'span',
+                        errorClass: 'help-block',
+                        highlight: function (element, errorClass, validClass) {
+                            $(element).closest('.form-group').addClass("has-error");
+                        },
+                        unhighlight: function (element, errorClass, validClass) {
+                            $(element).closest('.form-group').removeClass("has-error");
+                        },
+                        rules: {
+                            agentid: {
+                                required: true,
+                            },
+                            agentname: {
+                                required: true,
+                            },
+                        },
+                    });
+
+                    if (form.valid() === true) {
+                        const formData = form.serializeArray();
+                        const url = form.attr("action");
+                        $.ajax({
+                            type: "POST",
+                            url: url,
+                            data: formData,
+                            success: function (response) {
+                                if (response.success) {
+                                    $("#create-form").remove();
+                                    $("#stations-table_wrapper").show();
+                                    stations_table.ajax.reload();
+                                    $(".table-nav").closest(".nav-tabs").parent().show();
+                                    toastr.success(response.success);
+                                    //$("#stations-table_wrapper").hide();
+                                    //$("#stations-content").append(resp)
+                                } else if (response.error) {
+                                    toastr.error(response.error);
+                                }
+                            },
+
+                        });
+                    }
+                });
+                $(document).on('click', '.btn-station-view', function () {
+                    var station = $(this).closest('tr').find('td:eq(0)').text();
+                    var url = "global_setup/project/station/detail/" + station;
+                    $.get(url, "", function (resp) {
+                        $("#stations-table_wrapper").hide();
+                        $("#stations-content").append(resp)
+                    })
+                });
+                $(document).on('click', '.btn-station-edit', function () {
+                    var station = $(this).closest('tr').find('td:eq(0)').text();
+                    var station_id = $(this).attr('station-oode');
+                    var url = "/global_setup/project/station/update/" + station_id;
+
+                    $.get(url, "", function (resp) {
+                        $("#stations-table_wrapper").hide();
+                        $("#stations-content").append(resp)
+                    })
+                });
+                $(document).on("click", '.btn-update-close', function () {
+                    $("#station-details").remove();
+                    $("#stations-table_wrapper").show();
+                    stations_table.draw();
+                });
+                $(document).on("click", '.btn-station-delete', function () {
+                    var station = $(this).closest('tr').find('td:eq(1)').text();
+                    var station_id = $(this).attr('station-oode');
+
+                    var url = "/global_setup/project/station/delete/" + station_id;
+                    swal({
+                        title: "Are you sure?",
+                        text: "You are about to delete " + station + " Permit Agent",
+                        type: 'warning',
+                        showCancelButton: true,
+                        cancelButtonClass: 'btn-blue',
+                        cancelButtonText: 'No',
+                        confirmButtonClass: 'btn-danger',
+                        confirmButtonText: 'Yes',
+                        closeOnConfirm: true,
+                        closeOnCancel: true,
+                        closeOnClickOutside: false,
+                        allowEscapeKey: false,
+                        allowEnterKey: false,
+                        reverseButtons: false
+                    }, function (isConfirm) {
+                        if (isConfirm) {
+                            $.get(url, "", function (response) {
+                                if (response.success) {
+                                    stations_table.ajax.reload();
+                                    toastr.success(response.success);
+                                } else if (response.error) {
+                                    toastr.error(response.error);
+                                }
+                            });
+                        }
+                    });
+                });
+                $(document).on("click", '#btn-station-update', function () {
+                    const form = $("#station-update-form");
+                    form.validate({
+                        ignore: ":hidden:not(.validate)",
+                        errorElement: 'span',
+                        errorClass: 'help-block',
+                        highlight: function (element, errorClass, validClass) {
+                            $(element).closest('.form-group').addClass("has-error");
+                        },
+                        unhighlight: function (element, errorClass, validClass) {
+                            $(element).closest('.form-group').removeClass("has-error");
+                        },
+                        rules: {
+                            agentid: {
+                                required: true,
+                            },
+                            agentname: {
+                                required: true,
+                            },
+                        },
+                    });
+                    if (form.valid() === true) {
+                        var formData = form.serializeArray();
+                        const url = form.attr("action");
+                        $.ajax({
+                            type: "POST",
+                            url: url,
+                            data: formData,
+                            success: function (response) {
+                                if (response.success) {
+                                    $("#update-form").remove();
+                                    $("#stations-table_wrapper").show();
+                                    $(".table-nav").closest(".nav-tabs").parent().show();
+                                    stations_table.ajax.reload();
+                                    toastr.success(response.success);
+                                } else if (response.error) {
+                                    toastr.error(response.error);
+                                }
+                            },
+                        });
+                    }
+                });
+                $(document).on("click", '.btn-create-close', function () {
+                    $("#create-form").remove();
+                    $("#stations-table_wrapper").show();
+                    stations_table.ajax.reload();
+                    $(".table-nav").closest(".nav-tabs").parent().show();
+
+                });
+                $(document).on("click", '.btn-update-close', function () {
+                    $("#update-form").remove();
+                    $("#stations-table_wrapper").show();
+                    stations_table.ajax.reload();
+                    $(".table-nav").closest(".nav-tabs").parent().show();
+
+                });
+
+            });
+
+            $('#stationstable').DataTable({
+                processing: true,
+                serverSide: false,  // client-side paging/filtering
+                ajax: {
+                    url: "{% url 'station_list_api' %}",
+                    dataSrc: 'data'
+                },
+                columns: [
+                    {data: 'code'},
+                    {data: 'name'},
+                    {data: 'longitude'},
+                    {data: 'latitude'},
+                    {data: 'status'}
+                ],
+                responsive: true,
+                lengthMenu: [5, 10, 25, 50],
+                pageLength: 10,
+                order: [[0, 'asc']]
+            });
+        });
+    </script>
+{% endblock %}
