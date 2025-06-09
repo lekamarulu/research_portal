@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import generics
 
 from .filters import RainfallFilter, DischargeFilter, TemperatureFilter, ResearchDocumentFilter, \
     ResearchDocumentDataFilter
@@ -55,11 +56,13 @@ class YearsView(APIView):
 class StationViewSet(viewsets.ModelViewSet):
     queryset = Station.objects.all()
     serializer_class = StationSerializer
+    pagination_class = None
 
 
 class ClimateScenarioViewSet(viewsets.ModelViewSet):
     queryset = ClimateScenario.objects.all()
     serializer_class = ClimateScenarioSerializer
+    pagination_class = None
 
 
 @extend_schema_view(
@@ -109,7 +112,6 @@ class RainfallViewSet(viewsets.ModelViewSet):
     queryset = Rainfall.objects.all()
     serializer_class = RainfallSerializer
     filterset_class = RainfallFilter
-    pagination_class = None
 
     @extend_schema(
         parameters=[
@@ -462,12 +464,15 @@ def get_model_enum_values(model, field):
     )
 
 
-class RainfallPivotDailyAPIView(APIView):
-    def get_queryset(self, request):
+
+class RainfallPivotDailyAPIView(generics.GenericAPIView):
+    serializer_class = RainfallPivotDailySerializer
+
+    def get_queryset(self):
         qs = RainfallPivotDaily.objects.all()
-        climate_scenario = request.query_params.get('climate_scenario')
-        year_measured = request.query_params.get('year_measured')
-        station_code = request.query_params.get('station_code')
+        climate_scenario = self.request.query_params.get('climate_scenario')
+        year_measured = self.request.query_params.get('year_measured')
+        station_code = self.request.query_params.get('station_code')
 
         if climate_scenario:
             qs = qs.filter(climate_scenario__icontains=climate_scenario)
@@ -501,16 +506,34 @@ class RainfallPivotDailyAPIView(APIView):
                 enum=get_model_enum_values(Station, 'code'),
                 required=False
             ),
+            OpenApiParameter(
+                name="page",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False
+            ),
+            OpenApiParameter(
+                name="page_size",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=False
+            ),
         ],
         responses={200: RainfallPivotDailySerializer(many=True)}
     )
     def get(self, request):
-        queryset = self.get_queryset(request)
-        serializer = RainfallPivotDailySerializer(queryset, many=True)
+        queryset = self.get_queryset()
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class RainfallPivotMonthlyAPIView(APIView):
+class RainfallPivotMonthlyAPIView(generics.GenericAPIView):
     def get_queryset(self, request):
         qs = RainfallPivotMonthly.objects.all()
         climate_scenario = request.query_params.get('climate_scenario')
@@ -553,6 +576,12 @@ class RainfallPivotMonthlyAPIView(APIView):
         responses={200: RainfallPivotMonthlySerializer(many=True)}
     )
     def get(self, request):
-        queryset = self.get_queryset(request)
-        serializer = RainfallPivotMonthlySerializer(queryset, many=True)
+        queryset = self.get_queryset()
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

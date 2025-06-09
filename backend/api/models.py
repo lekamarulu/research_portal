@@ -100,6 +100,7 @@ class Rainfall(models.Model):
         managed = False
         db_table = 'rainfall'
         unique_together = (('climate_scenario','station',  'date_measured'),)
+        ordering = ['date_measured']
 
     def save(self, *args, **kwargs):
         if self.date_measured:

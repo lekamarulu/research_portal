@@ -1,11 +1,24 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Search, Plus, Edit, Trash2, Download, Upload, ArrowUpDown } from "lucide-react"
 
 interface Column {
@@ -24,6 +37,13 @@ interface DataTableProps {
   data: any[]
   columns: Column[]
   title: string
+  currentPage: number
+  itemsPerPage: number
+  totalItems: number
+  onPageChange: (page: number) => void
+  onItemsPerPageChange: (size: number) => void
+  onSearch?: (term: string) => void
+  onFilterChange?: (filters: Record<string, string>) => void
   onAdd?: () => void
   onEdit?: (item: any) => void
   onDelete?: (item: any) => void
@@ -36,6 +56,13 @@ export function DataTable({
   data,
   columns,
   title,
+  currentPage,
+  itemsPerPage,
+  totalItems,
+  onPageChange,
+  onItemsPerPageChange,
+  onSearch,
+  onFilterChange,
   onAdd,
   onEdit,
   onDelete,
@@ -44,61 +71,24 @@ export function DataTable({
   filters = [],
 }: DataTableProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null)
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
 
-  const filteredAndSortedData = useMemo(() => {
-    let filtered = data.filter((item) =>
-      Object.values(item).some((value) => value?.toString().toLowerCase().includes(searchTerm.toLowerCase())),
-    )
-
-    // Apply filters
-    Object.entries(activeFilters).forEach(([key, value]) => {
-      if (value) {
-        filtered = filtered.filter((item) => item[key]?.toString() === value)
-      }
-    })
-
-    // Apply sorting
-    if (sortConfig) {
-      filtered.sort((a, b) => {
-        const aValue = a[sortConfig.key]
-        const bValue = b[sortConfig.key]
-
-        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1
-        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1
-        return 0
-      })
-    }
-
-    return filtered
-  }, [data, searchTerm, sortConfig, activeFilters])
-
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredAndSortedData.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredAndSortedData, currentPage])
-
-  const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage)
-
-  const handleSort = (key: string) => {
-    setSortConfig((current) => {
-      if (current?.key === key) {
-        return current.direction === "asc" ? { key, direction: "desc" } : null
-      }
-      return { key, direction: "asc" }
-    })
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const term = e.target.value
+    setSearchTerm(term)
+    onSearch?.(term)
   }
 
   const handleFilterChange = (filterKey: string, value: string) => {
-    setActiveFilters((prev) => ({
-      ...prev,
-      [filterKey]: value,
-    }))
-    setCurrentPage(1)
+    const newFilters = {
+      ...activeFilters,
+      [filterKey]: value === "all" ? "" : value,
+    }
+    setActiveFilters(newFilters)
+    onFilterChange?.(newFilters)
   }
+
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
 
   return (
     <Card>
@@ -143,7 +133,7 @@ export function DataTable({
               <Input
                 placeholder="Search..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
                 className="pl-10"
               />
             </div>
@@ -175,72 +165,94 @@ export function DataTable({
               <TableHeader>
                 <TableRow>
                   {columns.map((column) => (
-                    <TableHead
-                      key={column.key}
-                      className={column.sortable ? "cursor-pointer hover:bg-gray-50" : ""}
-                      onClick={() => column.sortable && handleSort(column.key)}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>{column.label}</span>
-                        {column.sortable && <ArrowUpDown className="h-4 w-4" />}
-                      </div>
-                    </TableHead>
+                    <TableHead key={column.key}>{column.label}</TableHead>
                   ))}
                   {(onEdit || onDelete) && <TableHead>Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedData.map((item, index) => (
-                  <TableRow key={index}>
-                    {columns.map((column) => (
-                      <TableCell key={column.key}>{item[column.key]?.toString() || "-"}</TableCell>
-                    ))}
-                    {(onEdit || onDelete) && (
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          {onEdit && (
-                            <Button variant="ghost" size="sm" onClick={() => onEdit(item)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {onDelete && (
-                            <Button variant="ghost" size="sm" onClick={() => onDelete(item)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    )}
+                {data.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={columns.length + (onEdit || onDelete ? 1 : 0)} className="text-center">
+                      No data found.
+                    </TableCell>
                   </TableRow>
-                ))}
+                )}
+                {data.map((item, index) => {
+                  // Use item.id if available, otherwise fallback to index
+                  const key = item.id ?? index
+                  return (
+                    <TableRow key={key}>
+                      {columns.map((column) => (
+                        <TableCell key={column.key}>{item[column.key]?.toString() ?? "-"}</TableCell>
+                      ))}
+                      {(onEdit || onDelete) && (
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            {onEdit && (
+                              <Button variant="ghost" size="sm" onClick={() => onEdit(item)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {onDelete && (
+                              <Button variant="ghost" size="sm" onClick={() => onDelete(item)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
+          {totalItems > itemsPerPage && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="text-sm text-gray-500">
                 Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                {Math.min(currentPage * itemsPerPage, filteredAndSortedData.length)} of {filteredAndSortedData.length}{" "}
-                entries
+                {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} entries
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    onItemsPerPageChange(Number(value))
+                    onPageChange(1)
+                  }}
+                >
+                  <SelectTrigger className="w-[80px] text-sm h-8">
+                    <SelectValue placeholder="Rows" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 25, 50].map((count) => (
+                      <SelectItem key={count} value={count.toString()}>
+                        {count} / page
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  onClick={() => onPageChange(currentPage - 1)}
                   disabled={currentPage === 1}
                 >
                   Previous
                 </Button>
+
                 <span className="text-sm">
                   Page {currentPage} of {totalPages}
                 </span>
+
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  onClick={() => onPageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
                 >
                   Next

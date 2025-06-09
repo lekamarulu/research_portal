@@ -1,203 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { DataTable } from "@/components/data-table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
-
-// Mock data based on provided rainfall pivot daily data
-const rainfallPivotDailyData = [
-  {
-    id: "d05a11a869685c78ea7d5c90c13484b6",
-    climate_scenario: "OBSERVED",
-    station_code: "Biharamulo",
-    year_measured: 1970,
-    month_day: 1,
-    jan: 5.1,
-    feb: 0,
-    mar: 0,
-    apr: 10.5,
-    may: 14.5,
-    jun: 0,
-    jul: 0,
-    aug: 0,
-    sep: 0,
-    oct: 0,
-    nov: 0,
-    dec: 44.2,
-  },
-  {
-    id: "d51129cc1b58ef358258e8a5800a7656",
-    climate_scenario: "OBSERVED",
-    station_code: "Biharamulo",
-    year_measured: 1970,
-    month_day: 2,
-    jan: 0,
-    feb: 0,
-    mar: 0,
-    apr: 0,
-    may: 0,
-    jun: 0,
-    jul: 0,
-    aug: 0,
-    sep: 0,
-    oct: 22.86,
-    nov: 2.1,
-    dec: 0,
-  },
-  {
-    id: "dbfc4ed9ec795e383e365904701e4edb",
-    climate_scenario: "OBSERVED",
-    station_code: "Biharamulo",
-    year_measured: 1970,
-    month_day: 3,
-    jan: 0,
-    feb: 0,
-    mar: 0,
-    apr: 42.5,
-    may: 0,
-    jun: 0,
-    jul: 0,
-    aug: 0,
-    sep: 0,
-    oct: 3.81,
-    nov: 7.7,
-    dec: 0,
-  },
-  {
-    id: "71b0ac3928938751bd5deff0d7e5ee53",
-    climate_scenario: "OBSERVED",
-    station_code: "Biharamulo",
-    year_measured: 1970,
-    month_day: 4,
-    jan: 0,
-    feb: 3.81,
-    mar: 0,
-    apr: 15.4,
-    may: 13.4,
-    jun: 0,
-    jul: 0,
-    aug: 0,
-    sep: 0,
-    oct: 0,
-    nov: 3,
-    dec: 0.8,
-  },
-  {
-    id: "993842e267de983fca98ba76826e5304",
-    climate_scenario: "OBSERVED",
-    station_code: "Biharamulo",
-    year_measured: 1970,
-    month_day: 5,
-    jan: 8.6,
-    feb: 0,
-    mar: 0,
-    apr: 17.3,
-    may: 0.2,
-    jun: 0,
-    jul: 0,
-    aug: 0,
-    sep: 1.3,
-    oct: 0,
-    nov: 7.5,
-    dec: 0,
-  },
-  {
-    id: "cf4a2eb5457f3da1bee71bf9fbd1a048",
-    climate_scenario: "OBSERVED",
-    station_code: "Biharamulo",
-    year_measured: 1970,
-    month_day: 6,
-    jan: 44.9,
-    feb: 0,
-    mar: 0,
-    apr: 18.8,
-    may: 0,
-    jun: 0,
-    jul: 0,
-    aug: 0,
-    sep: 0.1,
-    oct: 0,
-    nov: 0,
-    dec: 0.1,
-  },
-  {
-    id: "b1e2992caa757811998c52c682e34475",
-    climate_scenario: "OBSERVED",
-    station_code: "Biharamulo",
-    year_measured: 1970,
-    month_day: 7,
-    jan: 0,
-    feb: 0,
-    mar: 9.4,
-    apr: 4.5,
-    may: 0,
-    jun: 0,
-    jul: 0,
-    aug: 0,
-    sep: 0.1,
-    oct: 0,
-    nov: 1.4,
-    dec: 2.2,
-  },
-  {
-    id: "d0313f501bccd33d5d82932932c519bb",
-    climate_scenario: "OBSERVED",
-    station_code: "Biharamulo",
-    year_measured: 1970,
-    month_day: 8,
-    jan: 9.6,
-    feb: 0,
-    mar: 1.8,
-    apr: 12,
-    may: 0,
-    jun: 0,
-    jul: 0,
-    aug: 0,
-    sep: 0,
-    oct: 0,
-    nov: 0.4,
-    dec: 0,
-  },
-  {
-    id: "d78377900e1fb0c0520265f21078f427",
-    climate_scenario: "OBSERVED",
-    station_code: "Biharamulo",
-    year_measured: 1970,
-    month_day: 9,
-    jan: 0.7,
-    feb: 0,
-    mar: 20.6,
-    apr: 24.1,
-    may: 13.8,
-    jun: 0,
-    jul: 0,
-    aug: 0,
-    sep: 0,
-    oct: 0,
-    nov: 0,
-    dec: 0,
-  },
-  {
-    id: "2c6cb5b7b76041d2b8233b7285595335",
-    climate_scenario: "OBSERVED",
-    station_code: "Biharamulo",
-    year_measured: 1970,
-    month_day: 10,
-    jan: 0,
-    feb: 0,
-    mar: 2.3,
-    apr: 1.6,
-    may: 0,
-    jun: 0,
-    jul: 0,
-    aug: 1.2,
-    sep: 0,
-    oct: 0,
-    nov: 0,
-    dec: 11.9,
-  },
-]
+import { DailyPivotRainfallPayload } from "@/models/rainfallModel"
+import { RainfallService } from "@/services/rainfallService"
 
 const columns = [
   { key: "climate_scenario", label: "Climate Scenario", sortable: true },
@@ -218,77 +26,156 @@ const columns = [
   { key: "dec", label: "Dec", sortable: true },
 ]
 
-const filters = [
-  {
-    key: "climate_scenario",
-    label: "Climate Scenario",
-    options: ["OBSERVED", "SSP126", "SSP245", "SSP370", "SSP585"],
-  },
-  {
-    key: "station_code",
-    label: "Station",
-    options: [
-      "Biharamulo",
-      "Bukoba",
-      "Igabiro",
-      "Izigo",
-      "Kaisho",
-      "Kayanga",
-      "Kishanda",
-      "Kyakakera",
-      "Ngara",
-      "Rubya",
-      "Rulenge",
-    ],
-  },
-  {
-    key: "year_measured",
-    label: "Year",
-    options: Array.from({ length: 55 }, (_, i) => String(1970 + i)),
-  },
-]
-
-// Chart data - transform for monthly comparison
-const chartData = rainfallPivotDailyData.slice(0, 10).map((item) => ({
-  day: item.month_day,
-  Jan: item.jan,
-  Feb: item.feb,
-  Mar: item.mar,
-  Apr: item.apr,
-  May: item.may,
-  Jun: item.jun,
-}))
 
 export function RainfallPivotDaily() {
-  const [activeTab, setActiveTab] = useState("table")
+  const [activeTab, setActiveTab] = useState<"table" | "charts">("table")
+  const [dailyPivotRainfallData, setDailyPivotRainfallData] = useState<DailyPivotRainfallPayload[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [page, setPage] = useState(1)
+  const limit = 10
+  const [totalCount, setTotalCount] = useState(0)
+
+  type FilterType = {
+    key: string
+    label: string
+    options: string[]
+  }
+
+  const [filters, setFilters] = useState<FilterType[]>([
+    { key: "climate_scenario", label: "Climate Scenario", options: [] },
+    { key: "station", label: "Station", options: [] },
+    {
+      key: "year_measured",
+      label: "Year",
+      options: Array.from({ length: 55 }, (_, i) => String(1970 + i)),
+    },
+  ])
+
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
+
+  // Fetch rainfall data based on current page, limit, and filters
+  const loadRainfallData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await RainfallService.getPaginatedDailyPivotRainfall(page, limit, activeFilters)
+      setDailyPivotRainfallData(response.results)
+      setTotalCount(response.count)
+    } catch (err) {
+      console.error("Failed to fetch rainfall data", err)
+      setError("Failed to fetch rainfall data.")
+    } finally {
+      setLoading(false)
+    }
+  }, [page, limit, activeFilters])
+
+  // Load filter options once on mount
+  useEffect(() => {
+    async function loadFilterOptions() {
+      try {
+        const [climateScenarios, stationOptions] = await Promise.all([
+          RainfallService.getClimateScenarios(),
+          RainfallService.getStationOptions(),
+        ])
+
+        setFilters((prevFilters) =>
+          prevFilters.map((filter) => {
+            if (filter.key === "climate_scenario") {
+              return {
+                ...filter,
+                options: climateScenarios.map((s: any) => s.climate_scenario),
+              }
+            }
+            if (filter.key === "station") {
+              return {
+                ...filter,
+                options: stationOptions.map((s: any) => s.code),
+              }
+            }
+            return filter
+          })
+        )
+      } catch (err) {
+        console.error("Failed to load filter options", err)
+      }
+    }
+    loadFilterOptions()
+  }, [])
+
+  // Reload data when page or filters change
+  useEffect(() => {
+    loadRainfallData()
+  }, [loadRainfallData])
+
+  // Handle filter changes by resetting page and updating filters state
+  const handleFilterChange = (updatedFilters: Record<string, string>) => {
+    setPage(1)
+    setActiveFilters(updatedFilters)
+  }
+
+  // Pagination calculations
+  const totalPages = Math.ceil(totalCount / limit)
 
   const handleExport = (format: string) => {
     console.log("Export rainfall pivot daily data as:", format)
   }
 
-  return (
+  // Chart data - transform for monthly comparison
+  const chartData = dailyPivotRainfallData.slice(0, 10).map((item) => ({
+    day: item.month_day,
+    Jan: item.jan,
+    Feb: item.feb,
+    Mar: item.mar,
+    Apr: item.apr,
+    May: item.may,
+    Jun: item.jun,
+    Jul: item.jul,
+    Aug: item.aug,
+    Sep: item.sep,
+    Oct: item.oct,
+    Nov: item.nov,
+    Dec: item.dec
+  }))
+return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Rainfall Pivot Daily</h1>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="table">Table</TabsTrigger>
-          <TabsTrigger value="charts">Charts & Graphs</TabsTrigger>
-        </TabsList>
+      {/* Content */}
+      {loading ? (
+        <div className="flex items-center justify-center py-10">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent border-blue-500" />
+        </div>
+      ) : error ? (
+        <p className="text-red-500">Error: {error}</p>
+      ) : (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="table">Table</TabsTrigger>
+            <TabsTrigger value="charts">Charts & Graphs</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="table" className="space-y-4">
-          <DataTable
-            data={rainfallPivotDailyData}
-            columns={columns}
-            title="Daily Rainfall Pivot View"
-            onExport={handleExport}
-            filters={filters}
-          />
-        </TabsContent>
-
-        <TabsContent value="charts" className="space-y-4">
+          <TabsContent value="table" className="space-y-4">
+            <DataTable
+              data={dailyPivotRainfallData}
+              columns={columns}
+              title="Daily Rainfall Pivot View"
+              onExport={handleExport}
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              currentPage={page}
+              itemsPerPage={limit}
+              totalItems={totalCount}
+              onPageChange={setPage}
+              onItemsPerPageChange={() => {}} // Optional: implement if you want to allow changing items per page
+              onSearch={() => {}} // Optional: implement search logic if needed
+            />
+          </TabsContent>
+          <TabsContent value="charts" className="space-y-4">
           <div className="grid grid-cols-1 gap-6">
             <div className="bg-white p-6 rounded-lg border">
               <h3 className="text-lg font-semibold mb-4">Monthly Rainfall Pattern by Day</h3>
@@ -305,12 +192,19 @@ export function RainfallPivotDaily() {
                   <Line type="monotone" dataKey="Apr" stroke="#d62728" />
                   <Line type="monotone" dataKey="May" stroke="#9467bd" />
                   <Line type="monotone" dataKey="Jun" stroke="#8c564b" />
+                  <Line type="monotone" dataKey="Jul" stroke="#1f77b4" />
+                  <Line type="monotone" dataKey="Aug" stroke="#ff7f0e" />
+                  <Line type="monotone" dataKey="Sep" stroke="#2ca02c" />
+                  <Line type="monotone" dataKey="Oct" stroke="#d62728" />
+                  <Line type="monotone" dataKey="Nov" stroke="#9467bd" />
+                  <Line type="monotone" dataKey="Dec" stroke="#8c564b" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
         </TabsContent>
-      </Tabs>
+        </Tabs>
+      )}
     </div>
   )
 }
